@@ -1,0 +1,17 @@
+# 开发环境
+NODE_ENV=development
+
+# API 基础URL
+VUE_APP_API_BASE_URL=http://localhost:3001/api
+
+# 地图API密钥
+VUE_APP_MAP_API_KEY=your_map_api_key_here
+
+# 推送应用ID
+VUE_APP_PUSH_APP_ID=your_push_app_id_here
+
+# 应用名称
+VUE_APP_NAME=志愿者管理系统
+
+# 版本号
+VUE_APP_VERSION=1.0.0

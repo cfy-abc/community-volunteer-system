@@ -1,0 +1,144 @@
+{
+  "pages": [
+    {
+      "path": "pages/auth/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/auth/register",
+      "style": {
+        "navigationBarTitleText": "注册",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/auth/admin-login",
+      "style": {
+        "navigationBarTitleText": "管理员登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/home/home",
+      "style": {
+        "navigationBarTitleText": "首页",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+    {
+      "path": "pages/activities/list",
+      "style": {
+        "navigationBarTitleText": "活动列表",
+        "enablePullDownRefresh": true
+      }
+    },
+	{
+	  "path": "pages/activities/apply",
+	  "style": {
+	    "navigationBarTitleText": "活动申请"
+	  }
+	},
+    {
+      "path": "pages/activities/detail",
+      "style": {
+        "navigationBarTitleText": "活动详情"
+      }
+    },
+    {
+      "path": "pages/activities/publish",
+      "style": {
+        "navigationBarTitleText": "发布活动"
+      }
+    },
+    {
+      "path": "pages/activities/sign",
+      "style": {
+        "navigationBarTitleText": "签到签退"
+      }
+    },
+    {
+      "path": "pages/my/applications",
+      "style": {
+        "navigationBarTitleText": "我的报名"
+      }
+    },
+    {
+      "path": "pages/my/certificates",
+      "style": {
+        "navigationBarTitleText": "我的证书"
+      }
+    },
+    {
+      "path": "pages/sign/checkin",
+      "style": {
+        "navigationBarTitleText": "签到签退"
+      }
+    },
+    {
+      "path": "pages/admin/dashboard",
+      "style": {
+        "navigationBarTitleText": "管理后台",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/admin/users",
+      "style": {
+        "navigationBarTitleText": "用户管理"
+      }
+    },
+    {
+      "path": "pages/admin/activities",
+      "style": {
+        "navigationBarTitleText": "活动管理"
+      }
+    },
+    {
+      "path": "pages/admin/organizations",
+      "style": {
+        "navigationBarTitleText": "组织管理"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "社区志愿服务管理系统",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#7A7E83",
+    "selectedColor": "#667eea",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "iconPath": "static/images/home.png",
+        "selectedIconPath": "static/images/home-active.png",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/activities/list",
+        "iconPath": "static/images/activity.png",
+        "selectedIconPath": "static/images/activity-active.png",
+        "text": "活动"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "iconPath": "static/images/my.png",
+        "selectedIconPath": "static/images/my-active.png",
+        "text": "我的"
+      }
+    ]
+  }
+}
