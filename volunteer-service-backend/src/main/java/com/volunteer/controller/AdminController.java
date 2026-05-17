@@ -274,4 +274,38 @@ public class AdminController {
             return Result.error(e.getMessage());
         }
     }
+
+    /**
+     * 获取待审批的签到记录列表
+     */
+    @GetMapping("/sign-approvals")
+    public Result getSignApprovals(@RequestParam(defaultValue = "1") Integer page,
+                                   @RequestParam(defaultValue = "10") Integer size) {
+        try {
+            int offset = (page - 1) * size;
+            List<Map<String, Object>> list = adminMapper.findPendingSignApprovals(offset, size);
+            int total = adminMapper.countPendingSignApprovals();
+            Map<String, Object> result = new HashMap<>();
+            result.put("list", list);
+            result.put("total", total);
+            result.put("page", page);
+            result.put("size", size);
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 拒绝签到审批
+     */
+    @PutMapping("/sign-approvals/{id}/reject")
+    public Result rejectSignApproval(@PathVariable Integer id) {
+        try {
+            adminMapper.rejectSignRecord(id);
+            return Result.success("已拒绝");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
 }

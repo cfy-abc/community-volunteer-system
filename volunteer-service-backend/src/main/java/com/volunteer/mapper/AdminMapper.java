@@ -60,4 +60,23 @@ public interface AdminMapper {
 
     @Select("SELECT a.type as name, COUNT(*) as value FROM activity a GROUP BY a.type ORDER BY value DESC")
     List<java.util.Map<String, Object>> activityTypeDistribution();
+
+    @Select("<script>" +
+            "SELECT sr.id, sr.user_id AS userId, sr.activity_id AS activityId, " +
+            "sr.hours_earned AS hoursEarned, sr.checkin_time AS checkinTime, " +
+            "sr.checkout_time AS checkoutTime, sr.approval_status AS approvalStatus, " +
+            "u.real_name AS realName, a.title AS activityTitle " +
+            "FROM sign_record sr " +
+            "JOIN user u ON sr.user_id = u.user_id " +
+            "JOIN activity a ON sr.activity_id = a.activity_id " +
+            "WHERE sr.status = 2 AND sr.approval_status = 0 " +
+            "ORDER BY sr.checkout_time DESC LIMIT #{offset}, #{limit}" +
+            "</script>")
+    List<Map<String, Object>> findPendingSignApprovals(@Param("offset") int offset, @Param("limit") int limit);
+
+    @Select("SELECT COUNT(*) FROM sign_record WHERE status = 2 AND approval_status = 0")
+    int countPendingSignApprovals();
+
+    @Update("UPDATE sign_record SET approval_status = 2, approval_time = NOW() WHERE id = #{id}")
+    int rejectSignRecord(@Param("id") Integer id);
 }
