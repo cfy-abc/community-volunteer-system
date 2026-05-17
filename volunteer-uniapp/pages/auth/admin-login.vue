@@ -15,7 +15,7 @@
           <text class="label">密码</text>
           <input v-model="form.password" type="password" placeholder="请输入密码" />
         </view>
-        <button class="login-btn" :disabled="submitting" @tap="handleLogin">
+        <button class="login-btn" :disabled="!canSubmit || submitting" @tap="handleLogin">
           {{ submitting ? '登录中...' : '登录' }}
         </button>
       </view>
@@ -27,15 +27,22 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
+import { useStore } from 'vuex'
 import request from '@/utils/request'
+
+const store = useStore()
 
 const form = reactive({ username: '', password: '' })
 const submitting = ref(false)
 
+const canSubmit = computed(() => {
+  return form.username.trim().length >= 3 && form.password.trim().length >= 6
+})
+
 const handleLogin = async () => {
-  if (!form.username.trim() || !form.password.trim()) {
-    uni.showToast({ title: '请填写账号和密码', icon: 'none' })
+  if (!canSubmit.value) {
+    uni.showToast({ title: '请填写正确的账号和密码', icon: 'none' })
     return
   }
   submitting.value = true
@@ -46,6 +53,7 @@ const handleLogin = async () => {
     })
     if (res.code === 200) {
       uni.setStorageSync('adminToken', res.data)
+      store.commit('auth/SET_ADMIN_TOKEN', res.data)
       uni.setStorageSync('adminUsername', form.username.trim())
       uni.showToast({ title: '登录成功', icon: 'success' })
       setTimeout(() => uni.redirectTo({ url: '/pages/admin/dashboard' }), 1000)

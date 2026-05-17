@@ -27,7 +27,6 @@
               class="input-field"
               placeholder="请输入用户名"
               placeholder-class="input-placeholder"
-              @input="onUsernameInput"
             />
           </view>
           
@@ -39,7 +38,6 @@
               class="input-field"
               placeholder="请输入密码"
               placeholder-class="input-placeholder"
-              @input="onPasswordInput"
             />
           </view>
         </view>
@@ -61,6 +59,9 @@
         <view class="form-footer">
           <text class="footer-text">还没有账号？</text>
           <text class="register-link" @tap="toRegister">立即注册</text>
+        </view>
+        <view class="admin-link-row">
+          <text class="admin-link" @tap="toAdminLogin">管理员登录</text>
         </view>
       </view>
 
@@ -84,7 +85,10 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
+import { useStore } from 'vuex'
 import request from '@/utils/request'
+
+const store = useStore()
 
 const formData = reactive({
   username: '',
@@ -113,8 +117,15 @@ const handleLogin = async () => {
     if (res.code === 200) {
       const token = res.data
       uni.setStorageSync('token', token)
-      // 存储用户名用于显示
-      uni.setStorageSync('userInfo', { username: formData.username.trim() })
+      store.commit('auth/SET_TOKEN', token)
+      // Fetch actual user info from server instead of using form input
+      try {
+        const infoRes = await request.get('/api/users/info')
+        if (infoRes.code === 200) {
+          store.commit('auth/SET_USER_INFO', infoRes.data)
+          uni.setStorageSync('userInfo', infoRes.data)
+        }
+      } catch(e) {}
       uni.showToast({ title: '登录成功', icon: 'success' })
       setTimeout(() => {
         uni.switchTab({ url: '/pages/home/home' })
@@ -123,8 +134,10 @@ const handleLogin = async () => {
       uni.showToast({ title: res.msg || '登录失败', icon: 'none' })
     }
   } catch (error) {
-    console.error('登录异常:', error)
-    uni.showToast({ title: '网络错误', icon: 'none' })
+    console.error('登录异常:', JSON.stringify(error))
+    // 显示详细的错误信息以便调试
+    const errMsg = error.message || error.errMsg || JSON.stringify(error) || '未知错误'
+    uni.showToast({ title: errMsg, icon: 'none', duration: 4000 })
   } finally {
     loading.value = false
   }
@@ -132,9 +145,56 @@ const handleLogin = async () => {
 
 const goBack = () => uni.navigateBack()
 const toRegister = () => uni.navigateTo({ url: '/pages/auth/register' })
+const toAdminLogin = () => uni.navigateTo({ url: '/pages/auth/admin-login' })
 
-const wechatLogin = () => {
-  uni.showToast({ title: '微信登录功能开发中', icon: 'none' })
+const wechatLogin = async () => {
+  // #ifdef MP-WEIXIN
+  uni.showLoading({ title: '微信登录中...' })
+  try {
+    const loginRes = await new Promise((resolve, reject) => {
+      uni.login({ provider: 'weixin', success: resolve, fail: reject })
+    })
+    if (loginRes.code) {
+      const res = await request.post('/api/users/wechat/login', { code: loginRes.code })
+      if (res.code === 200) {
+        const token = res.data
+        uni.setStorageSync('token', token)
+        store.commit('auth/SET_TOKEN', token)
+        try {
+          const infoRes = await request.get('/api/users/info')
+          if (infoRes.code === 200) {
+            store.commit('auth/SET_USER_INFO', infoRes.data)
+            uni.setStorageSync('userInfo', infoRes.data)
+          }
+        } catch(e) {}
+        uni.showToast({ title: '登录成功', icon: 'success' })
+        setTimeout(() => uni.switchTab({ url: '/pages/home/home' }), 1000)
+      } else {
+        uni.showToast({ title: res.msg || '微信登录失败', icon: 'none' })
+      }
+    }
+  } catch (err) {
+    uni.showToast({ title: '微信登录失败', icon: 'none' })
+  } finally {
+    uni.hideLoading()
+  }
+  // #endif
+  // #ifdef H5
+  try {
+    const res = await request.get('/api/users/wechat/auth-url')
+    if (res.code === 200 && res.data && res.data.url) {
+      // 在H5环境中跳转到微信OAuth页面
+      window.location.href = res.data.url
+    } else {
+      uni.showToast({ title: '获取微信授权链接失败', icon: 'none' })
+    }
+  } catch (err) {
+    uni.showToast({ title: '微信登录仅支持小程序和H5', icon: 'none' })
+  }
+  // #endif
+  // #ifdef APP-PLUS
+  uni.showToast({ title: 'App端微信登录开发中', icon: 'none' })
+  // #endif
 }
 
 const qqLogin = () => {
@@ -349,6 +409,17 @@ page {
   .register-link {
     font-size: 26rpx;
     color: #667eea;
+    text-decoration: underline;
+  }
+}
+
+.admin-link-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 20rpx;
+  .admin-link {
+    font-size: 24rpx;
+    color: rgba(255, 255, 255, 0.7);
     text-decoration: underline;
   }
 }
