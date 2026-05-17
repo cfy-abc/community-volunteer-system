@@ -255,6 +255,59 @@ public class ActivityController {
         }
     }
 
+    /**
+     * 报名活动（含表单数据）
+     */
+    @PostMapping("/{id}/apply")
+    public Result applyForActivity(@RequestHeader("Authorization") String token,
+                                    @PathVariable Integer id,
+                                    @RequestBody Map<String, String> formData) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            activityService.applyForActivity(userId, id, formData);
+            return Result.success("报名成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取报名者名单
+     */
+    @GetMapping("/{id}/applicants")
+    public Result getApplicants(@RequestHeader("Authorization") String token,
+                                @PathVariable Integer id) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            List<Map<String, Object>> applicants = activityService.getApplicants(id);
+            return Result.success(applicants);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 导出报名名单 Excel
+     */
+    @GetMapping("/{id}/applicants/export")
+    public org.springframework.http.ResponseEntity<byte[]> exportApplicants(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Integer id) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            byte[] data = activityService.exportApplicants(id);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.parseMediaType(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDisposition(org.springframework.http.ContentDisposition
+                    .attachment().filename("applicants.xlsx").build());
+            return new org.springframework.http.ResponseEntity<>(data, headers,
+                    org.springframework.http.HttpStatus.OK);
+        } catch (Exception e) {
+            return org.springframework.http.ResponseEntity.badRequest().build();
+        }
+    }
+
     private Integer getUserIdFromToken(String token) throws Exception {
         if (token == null) throw new Exception("未提供Token");
         return jwtUtils.getUserIdFromToken(token);

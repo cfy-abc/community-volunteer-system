@@ -45,6 +45,13 @@ public class ActivityServiceImpl implements ActivityService {
             throw new Exception("用户不存在或未通过审核");
         }
 
+        // 检查实名认证
+        if (user.getRealNameStatus() == null || user.getRealNameStatus() != 1) {
+            throw new Exception("请先完成实名认证后再发布活动");
+        }
+
+        // 检查是否组织用户
+        boolean isOrgUser = user.getIsOrgUser() != null && user.getIsOrgUser() == 1;
         if (activityDTO.getOrgId() != null && activityDTO.getOrgId() > 0) {
             Organization org = organizationMapper.findById(activityDTO.getOrgId());
             if (org == null || !org.getCreatorId().equals(userId)) {
@@ -52,11 +59,17 @@ public class ActivityServiceImpl implements ActivityService {
             }
         }
 
+        // 普通用户奖励时长不能超过可用余额
+        if (!isOrgUser && activityDTO.getRewardHours() != null && activityDTO.getRewardHours() > user.getVolunteerHours()) {
+            throw new Exception("奖励时长不能超过您的可用志愿时长（当前余额：" + user.getVolunteerHours() + "小时）");
+        }
+
         Activity activity = new Activity();
         BeanUtils.copyProperties(activityDTO, activity);
         activity.setCreatorId(userId);
         activity.setCurrentParticipants(0);
-        activity.setStatus(4);
+        // 发布活动直接进入招募状态，无需审核
+        activity.setStatus(1);
         activity.setPoster(activityDTO.getPoster() != null ? activityDTO.getPoster() : "/default_activity_poster.jpg");
 
         activityMapper.insert(activity);
@@ -84,9 +97,23 @@ public class ActivityServiceImpl implements ActivityService {
     @Override
     @Transactional
     public void registerForActivity(Integer userId, Integer activityId) throws Exception {
+        // 检查用户状态
+        User user = userMapper.findById(userId);
+        if (user == null || user.getStatus() != 1) {
+            throw new Exception("用户不存在或未通过审核");
+        }
+        // 检查实名认证状态
+        if (user.getRealNameStatus() == null || user.getRealNameStatus() != 1) {
+            throw new Exception("请先完成实名认证后再报名活动");
+        }
+
         Activity activity = activityMapper.findById(activityId);
         if (activity == null) {
             throw new Exception("活动不存在");
+        }
+        // 发布方不能报名自己发布的活动
+        if (activity.getCreatorId().equals(userId)) {
+            throw new Exception("您是该活动的发布方，不能报名自己的活动");
         }
 
         if (activity.getStatus() != 1) {
@@ -248,10 +275,21 @@ public class ActivityServiceImpl implements ActivityService {
             throw new Exception("尚未签到或已经签退");
         }
 
-        // 更新签退信息
-        record.setCheckoutTime(new Date());
+        Date now = new Date();
+        // 计算服务时长（小时）：签退时间 - 签到时间
+        double hoursEarned = 0;
+        if (record.getCheckinTime() != null) {
+            long diffMs = now.getTime() - record.getCheckinTime().getTime();
+            hoursEarned = Math.round(diffMs / (1000.0 * 60 * 60) * 10.0) / 10.0; // 精确到0.1小时
+            if (hoursEarned < 0) hoursEarned = 0;
+        }
+
+        // 更新签退信息（含服务时长计算，待审批状态）
+        record.setCheckoutTime(now);
         record.setCheckoutLocation(location);
         record.setStatus(2);
+        record.setHoursEarned(hoursEarned);
+        record.setApprovalStatus(0); // 待审批
         signRecordMapper.updateCheckout(record);
     }
 
@@ -286,9 +324,42 @@ public class ActivityServiceImpl implements ActivityService {
             map.put("checkoutTime", record.getCheckoutTime());
             map.put("checkinLocation", record.getCheckinLocation());
             map.put("checkoutLocation", record.getCheckoutLocation());
+            map.put("userId", record.getUserId());
+            map.put("qrToken", record.getQrToken());
         }
 
         return map;
+    }
+
+    @Override
+    @Transactional
+    public void organizerCheckIn(Integer organizerUserId, Integer volunteerUserId, Integer activityId, String qrToken) throws Exception {
+        // 验证组织者是活动发布方
+        Activity activity = activityMapper.findById(activityId);
+        if (activity == null) throw new Exception("活动不存在");
+        if (!activity.getCreatorId().equals(organizerUserId)) {
+            // 检查是否是组织管理员
+            if (activity.getOrgId() != null && activity.getOrgId() > 0) {
+                Organization org = organizationMapper.findById(activity.getOrgId());
+                if (org == null || !org.getCreatorId().equals(organizerUserId)) {
+                    throw new Exception("只有活动发布方或组织管理员可以进行反扫码签到");
+                }
+            } else {
+                throw new Exception("只有活动发布方可以进行反扫码签到");
+            }
+        }
+
+        // 验证志愿者的二维码
+        SignRecord record = signRecordMapper.findByUserAndActivity(volunteerUserId, activityId);
+        if (record == null) throw new Exception("未找到该志愿者的签到记录");
+        if (!qrToken.equals(record.getQrToken())) throw new Exception("二维码无效或已过期");
+        if (record.getStatus() != 0) throw new Exception("该志愿者已签到或已完成签退");
+
+        // 执行签到（不需要位置，由组织者确认）
+        record.setCheckinTime(new Date());
+        record.setCheckinLocation("组织者扫码签到");
+        record.setStatus(1);
+        signRecordMapper.updateCheckin(record);
     }
 
     /**
@@ -304,5 +375,75 @@ public class ActivityServiceImpl implements ActivityService {
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    }
+
+    @Override
+    @Transactional
+    public void applyForActivity(Integer userId, Integer activityId, Map<String, String> formData) throws Exception {
+        User user = userMapper.findById(userId);
+        if (user == null || user.getStatus() != 1) throw new Exception("用户不存在或未通过审核");
+        if (user.getRealNameStatus() == null || user.getRealNameStatus() != 1) throw new Exception("请先完成实名认证后再报名活动");
+
+        Activity activity = activityMapper.findById(activityId);
+        if (activity == null) throw new Exception("活动不存在");
+        if (activity.getCreatorId().equals(userId)) throw new Exception("您是该活动的发布方，不能报名自己的活动");
+        if (activity.getStatus() != 1) throw new Exception("活动不在招募状态");
+
+        VolunteerRecord existing = recordMapper.findByUserAndActivity(userId, activityId);
+        if (existing != null) throw new Exception("您已报名过该活动");
+
+        if (activity.getCurrentParticipants() >= activity.getMaxParticipants()) throw new Exception("活动人数已满");
+
+        VolunteerRecord record = new VolunteerRecord();
+        record.setUserId(userId);
+        record.setActivityId(activityId);
+        record.setHoursEarned(activity.getRewardHours());
+        record.setStatus("registered");
+        // Set form data
+        record.setApplicantName(formData.get("name"));
+        record.setApplicantPhone(formData.get("phone"));
+        record.setApplicantEmail(formData.get("email"));
+        record.setEmergencyContact(formData.get("emergencyContact"));
+        record.setEmergencyPhone(formData.get("emergencyPhone"));
+        record.setRemarks(formData.get("remarks"));
+
+        recordMapper.insert(record);
+        activityMapper.increaseParticipants(activityId);
+        createSignRecord(userId, activityId);
+    }
+
+    @Override
+    public List<Map<String, Object>> getApplicants(Integer activityId) throws Exception {
+        Activity activity = activityMapper.findById(activityId);
+        if (activity == null) throw new Exception("活动不存在");
+        return recordMapper.findApplicantsByActivity(activityId);
+    }
+
+    @Override
+    public byte[] exportApplicants(Integer activityId) throws Exception {
+        List<Map<String, Object>> applicants = getApplicants(activityId);
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+            org.apache.poi.xssf.usermodel.XSSFSheet sheet = workbook.createSheet("报名名单");
+            org.apache.poi.xssf.usermodel.XSSFRow header = sheet.createRow(0);
+            String[] headers = {"姓名", "手机号", "邮箱", "紧急联系人", "紧急联系电话", "备注", "报名时间"};
+            for (int i = 0; i < headers.length; i++) {
+                header.createCell(i).setCellValue(headers[i]);
+            }
+
+            int rowIdx = 1;
+            for (Map<String, Object> a : applicants) {
+                org.apache.poi.xssf.usermodel.XSSFRow row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(a.get("applicantName") != null ? a.get("applicantName").toString() : "");
+                row.createCell(1).setCellValue(a.get("applicantPhone") != null ? a.get("applicantPhone").toString() : "");
+                row.createCell(2).setCellValue(a.get("applicantEmail") != null ? a.get("applicantEmail").toString() : "");
+                row.createCell(3).setCellValue(a.get("emergencyContact") != null ? a.get("emergencyContact").toString() : "");
+                row.createCell(4).setCellValue(a.get("emergencyPhone") != null ? a.get("emergencyPhone").toString() : "");
+                row.createCell(5).setCellValue(a.get("remarks") != null ? a.get("remarks").toString() : "");
+                row.createCell(6).setCellValue(a.get("registerTime") != null ? a.get("registerTime").toString() : "");
+            }
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            workbook.write(bos);
+            return bos.toByteArray();
+        }
     }
 }

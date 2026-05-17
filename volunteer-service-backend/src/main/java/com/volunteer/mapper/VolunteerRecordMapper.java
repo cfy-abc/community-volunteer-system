@@ -56,4 +56,14 @@ public interface VolunteerRecordMapper {
 
     @Update("UPDATE volunteer_record SET status = 'cancelled' WHERE record_id = #{recordId}")
     int cancel(Integer recordId);
+
+    @Select("SELECT vr.applicant_name AS applicantName, vr.applicant_phone AS applicantPhone, " +
+            "vr.applicant_email AS applicantEmail, vr.emergency_contact AS emergencyContact, " +
+            "vr.emergency_phone AS emergencyPhone, vr.remarks AS remarks, " +
+            "vr.register_time AS registerTime, u.real_name AS userName " +
+            "FROM volunteer_record vr " +
+            "JOIN user u ON vr.user_id = u.user_id " +
+            "WHERE vr.activity_id = #{activityId} AND vr.status != 'cancelled' " +
+            "ORDER BY vr.register_time DESC")
+    List<Map<String, Object>> findApplicantsByActivity(@Param("activityId") Integer activityId);
 }
