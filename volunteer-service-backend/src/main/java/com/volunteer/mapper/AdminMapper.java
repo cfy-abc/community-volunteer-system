@@ -17,6 +17,14 @@ public interface AdminMapper {
     @Update("UPDATE admin SET last_login_time = NOW() WHERE admin_id = #{adminId}")
     void updateLoginTime(@Param("adminId") Integer adminId);
 
+    @Insert("INSERT INTO admin(username, password, real_name, phone, role, status, create_time) " +
+            "VALUES(#{username}, #{password}, #{realName}, #{phone}, #{role}, #{status}, NOW())")
+    @Options(useGeneratedKeys = true, keyProperty = "adminId")
+    int insert(Admin admin);
+
+    @Update("UPDATE admin SET password = #{password} WHERE admin_id = #{adminId}")
+    int updatePassword(@Param("adminId") Integer adminId, @Param("password") String password);
+
     @Select("<script>" +
             "SELECT * FROM user WHERE 1=1 " +
             "<if test='status != null'>AND status = #{status}</if> " +
@@ -39,7 +47,7 @@ public interface AdminMapper {
     @Select("SELECT COUNT(*) FROM organization")
     int totalOrganizations();
 
-    @Select("SELECT COALESCE(SUM(volunteer_hours), 0) FROM user")
+    @Select("SELECT COALESCE(SUM(sr.hours_earned), 0) FROM sign_record sr WHERE sr.approval_status = 1")
     int totalVolunteerHours();
 
     @Select("SELECT * FROM user ORDER BY volunteer_hours DESC LIMIT #{limit}")

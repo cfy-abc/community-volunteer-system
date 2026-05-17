@@ -4,6 +4,7 @@ import com.volunteer.entity.User;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface UserMapper {
@@ -21,6 +22,12 @@ public interface UserMapper {
 
     @Update("UPDATE user SET volunteer_hours = #{volunteerHours}, total_earned_hours = #{totalEarnedHours}, total_spent_hours = #{totalSpentHours} WHERE user_id = #{userId}")
     int updateHours(User user);
+
+    @Update("UPDATE user SET password = #{password} WHERE user_id = #{userId}")
+    int updatePassword(User user);
+
+    @Update("UPDATE user SET username = #{username}, phone = #{phone}, avatar = #{avatar} WHERE user_id = #{userId}")
+    int updateInfo(User user);
 
     @Select("SELECT EXISTS(SELECT 1 FROM organization WHERE creator_id = #{userId})")
     boolean hasOrganization(Integer userId);
@@ -44,4 +51,61 @@ public interface UserMapper {
             "</script>")
     // @formatter:on
     int countAll(@Param("status") Integer status);
+
+    @Update("UPDATE user SET real_name = #{realName}, id_card = #{idCard}, real_name_status = #{status} WHERE user_id = #{userId}")
+    int updateRealNameStatus(@Param("userId") Integer userId, @Param("realName") String realName,
+                             @Param("idCard") String idCard, @Param("status") Integer status);
+
+    @Insert("INSERT INTO org_upgrade_application(user_id, position, department, reason, status, apply_time) " +
+            "VALUES(#{userId}, #{position}, #{department}, #{reason}, 0, NOW())")
+    int insertOrgUpgradeApplication(@Param("userId") Integer userId, @Param("position") String position,
+                                    @Param("department") String department, @Param("reason") String reason);
+
+    @Select("SELECT a.type as name, COALESCE(SUM(vr.hours_earned), 0) as value " +
+            "FROM volunteer_record vr " +
+            "JOIN activity a ON vr.activity_id = a.activity_id " +
+            "WHERE vr.user_id = #{userId} GROUP BY a.type")
+    List<Map<String, Object>> getActivityTypeDistribution(@Param("userId") Integer userId);
+
+    @Select("SELECT DATE_FORMAT(sr.checkout_time, '%Y-%m') as month, " +
+            "COALESCE(SUM(sr.hours_earned), 0) as hours " +
+            "FROM sign_record sr " +
+            "WHERE sr.user_id = #{userId} AND sr.approval_status IN (0, 1) " +
+            "AND sr.checkout_time IS NOT NULL " +
+            "GROUP BY DATE_FORMAT(sr.checkout_time, '%Y-%m') ORDER BY month ASC")
+    List<Map<String, Object>> getMonthlyStats(@Param("userId") Integer userId);
+
+    @Select("SELECT YEAR(sr.checkout_time) as year, " +
+            "COALESCE(SUM(sr.hours_earned), 0) as hours " +
+            "FROM sign_record sr " +
+            "WHERE sr.user_id = #{userId} AND sr.approval_status = 1 " +
+            "AND sr.checkout_time >= DATE_SUB(NOW(), INTERVAL 3 YEAR) " +
+            "GROUP BY YEAR(sr.checkout_time) ORDER BY year ASC")
+    List<Map<String, Object>> getYearlyStats(@Param("userId") Integer userId);
+
+    // ===== 组织升级申请管理 =====
+    @Select("SELECT a.*, u.username, u.real_name FROM org_upgrade_application a " +
+            "JOIN user u ON a.user_id = u.user_id ORDER BY a.apply_time DESC LIMIT #{offset}, #{limit}")
+    List<Map<String, Object>> findOrgUpgradeApplications(@Param("offset") int offset, @Param("limit") int limit);
+
+    @Select("SELECT COUNT(*) FROM org_upgrade_application")
+    int countOrgUpgradeApplications();
+
+    @Update("UPDATE org_upgrade_application SET status = #{status}, audit_time = NOW() WHERE application_id = #{id}")
+    int updateOrgUpgradeStatus(@Param("id") Integer id, @Param("status") Integer status);
+
+    @Update("UPDATE user SET is_org_user = 1, org_position = #{position}, org_department = #{department} WHERE user_id = #{userId}")
+    int upgradeToOrgUser(@Param("userId") Integer userId, @Param("position") String position,
+                         @Param("department") String department);
+
+    // ===== 实名认证管理 =====
+    @Select("SELECT user_id, username, real_name, phone, id_card, real_name_status, register_time " +
+            "FROM user WHERE real_name_status = 2 ORDER BY register_time DESC LIMIT #{offset}, #{limit}")
+    List<Map<String, Object>> findPendingRealNameVerifications(@Param("offset") int offset, @Param("limit") int limit);
+
+    @Select("SELECT COUNT(*) FROM user WHERE real_name_status = 2")
+    int countPendingRealNameVerifications();
+
+    @Update("UPDATE user SET real_name_status = 1 WHERE user_id = #{userId}")
+    int approveRealName(@Param("userId") Integer userId);
 }
