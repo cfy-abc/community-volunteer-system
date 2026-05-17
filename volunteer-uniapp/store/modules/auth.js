@@ -4,6 +4,7 @@ export default {
   namespaced: true,
   state: () => ({
     token: uni.getStorageSync('token') || '',
+    adminToken: '',
     userInfo: null,
     loading: false,
     error: null
@@ -24,6 +25,7 @@ export default {
         uni.removeStorageSync('token')
       }
     },
+    SET_ADMIN_TOKEN(state, token) { state.adminToken = token },
     SET_USER_INFO(state, userInfo) {
       state.userInfo = userInfo
     },
@@ -98,6 +100,9 @@ export default {
     logout({ commit }) {
       commit('SET_TOKEN', '')
       commit('SET_USER_INFO', null)
+      uni.removeStorageSync('token')
+      uni.removeStorageSync('userInfo')
+      uni.removeStorageSync('adminToken')
     }
   }
 }
