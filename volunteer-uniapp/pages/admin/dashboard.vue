@@ -1,79 +1,56 @@
 <template>
-  <view class="dashboard-container">
+  <view class="page">
     <view class="top-bar">
       <text class="title">管理后台</text>
       <text class="logout" @tap="handleLogout">退出</text>
     </view>
 
-    <view class="loading-box" v-if="loading">
-      <text>加载中...</text>
-    </view>
+    <view v-if="loading" class="loading">加载中...</view>
+    <view v-else-if="loadErr" class="err" @tap="loadAll">{{ loadErr }}（点击重试）</view>
 
-    <template v-else-if="!error">
-      <view class="stats-row">
-        <view class="stat-card primary">
-          <text class="stat-num">{{ data.totalUsers || 0 }}</text>
-          <text class="stat-label">注册用户</text>
-        </view>
-        <view class="stat-card success">
-          <text class="stat-num">{{ data.totalActivities || 0 }}</text>
-          <text class="stat-label">活动总数</text>
-        </view>
-        <view class="stat-card warning">
-          <text class="stat-num">{{ data.totalOrganizations || 0 }}</text>
-          <text class="stat-label">志愿组织</text>
-        </view>
-        <view class="stat-card info">
-          <text class="stat-num">{{ data.totalVolunteerHours || 0 }}</text>
-          <text class="stat-label">总志愿时长(h)</text>
-        </view>
+    <template v-else>
+      <!-- 统计卡片 -->
+      <view class="stats">
+        <view class="stat s1"><text class="n">{{ d.totalUsers }}</text><text class="l">用户</text></view>
+        <view class="stat s2"><text class="n">{{ d.totalActivities }}</text><text class="l">活动</text></view>
+        <view class="stat s3"><text class="n">{{ d.totalOrganizations }}</text><text class="l">组织</text></view>
+        <view class="stat s4"><text class="n">{{ d.totalVolunteerHours }}</text><text class="l">总时长(h)</text></view>
       </view>
 
-      <view class="quick-actions">
-        <view class="action-item" @tap="goTo('users')">
-          <text class="action-icon">&#x1f465;</text>
-          <text class="action-text">用户管理</text>
-        </view>
-        <view class="action-item" @tap="goTo('activities')">
-          <text class="action-icon">&#x1f4cb;</text>
-          <text class="action-text">活动管理</text>
-        </view>
-        <view class="action-item" @tap="goTo('organizations')">
-          <text class="action-icon">&#x1f3e2;</text>
-          <text class="action-text">组织管理</text>
-        </view>
+      <!-- 快捷入口 -->
+      <view class="actions">
+        <view class="act" @tap="go('users')"><text>&#128101;</text><text>用户管理</text></view>
+        <view class="act" @tap="go('activities')"><text>&#128203;</text><text>活动管理</text></view>
+        <view class="act" @tap="go('organizations')"><text>&#127970;</text><text>组织管理</text></view>
+        <view class="act" @tap="go('sign-approvals')"><text>✅</text><text>签到审批</text></view>
       </view>
 
-      <view class="section" v-if="topList.length > 0">
-        <text class="section-title">志愿时长排行 TOP10</text>
-        <view class="rank-list">
-          <view class="rank-item" v-for="(u, idx) in topList" :key="u.userId || idx">
-            <view class="rank-num" :class="{ top: idx < 3 }">{{ idx + 1 }}</view>
-            <view class="rank-info">
-              <text class="rank-name">{{ u.realName }}</text>
-              <text class="rank-phone">{{ u.phone }}</text>
+      <!-- 可视化大屏 -->
+      <view class="chart-card">
+        <text class="sec-title">活动类型分布</text>
+        <view v-if="d.activityTypeDistribution && d.activityTypeDistribution.length > 0">
+          <view class="bar-row" v-for="(t, i) in typeDist" :key="i">
+            <text class="bar-name">{{ t.name }}</text>
+            <view class="bar-track">
+              <view class="bar-fill" :style="{ width: barW(t.value), background: colors[i%8] }"></view>
             </view>
-            <text class="rank-hours">{{ u.volunteerHours || 0 }}h</text>
+            <text class="bar-val">{{ t.value }}</text>
           </view>
         </view>
+        <text v-else class="no-data">暂无活动类型数据</text>
       </view>
 
-      <view class="section" v-if="data.topOrganizations && data.topOrganizations.length > 0">
-        <text class="section-title">组织活跃度 TOP10</text>
-        <view class="rank-list">
-          <view class="rank-item" v-for="(o, idx) in data.topOrganizations" :key="idx">
-            <view class="rank-num" :class="{ top: idx < 3 }">{{ idx + 1 }}</view>
-            <text class="rank-name flex-1">{{ o.name }}</text>
-            <text class="rank-hours">{{ o.total || 0 }}h</text>
-          </view>
+      <!-- 志愿者排行 -->
+      <view class="chart-card">
+        <text class="sec-title">志愿时长排行 TOP10</text>
+        <view class="rank" v-for="(u, i) in topList" :key="i">
+          <text class="rk" :class="i<3?'top':''">{{ i+1 }}</text>
+          <text class="rn">{{ u.realName }}</text>
+          <text class="rh">{{ u.volunteerHours || 0 }}h</text>
         </view>
+        <text v-if="!topList.length" class="no-data">暂无数据</text>
       </view>
     </template>
-
-    <view class="error-box" v-if="error">
-      <text>{{ error }}</text>
-      <button class="retry-btn" @tap="loadData">重新加载</button>
-    </view>
   </view>
 </template>
 
@@ -81,113 +58,76 @@
 import { ref, computed, onMounted } from 'vue'
 import request from '@/utils/request'
 
-const data = ref({
-  totalUsers: 0, totalActivities: 0, totalOrganizations: 0, totalVolunteerHours: 0,
-  topVolunteers: [], topOrganizations: [], activityTypeDistribution: []
-})
+const d = ref({ totalUsers:0, totalActivities:0, totalOrganizations:0, totalVolunteerHours:0, topVolunteers:[], topOrganizations:[], activityTypeDistribution:[] })
 const loading = ref(true)
-const error = ref('')
+const loadErr = ref('')
+const colors = ['#667eea','#4caf50','#ff9800','#f44336','#2196f3','#9c27b0','#00bcd4','#ff5722']
 
-const topList = computed(() => data.value.topVolunteers || [])
+const topList = computed(() => d.value.topVolunteers || [])
+const typeDist = computed(() => d.value.activityTypeDistribution || [])
+const maxType = computed(() => Math.max(...typeDist.value.map(t => t.value || 0), 1))
+const barW = (v) => (v / maxType.value * 100) + '%'
 
-const goTo = (page) => {
-  const urls = {
-    users: '/pages/admin/users',
-    activities: '/pages/admin/activities',
-    organizations: '/pages/admin/organizations'
-  }
-  uni.navigateTo({ url: urls[page] })
-}
-
-const loadData = async () => {
+const loadAll = async () => {
   loading.value = true
-  error.value = ''
+  loadErr.value = ''
   try {
-    const adminToken = uni.getStorageSync('adminToken')
-    if (!adminToken) {
-      uni.redirectTo({ url: '/pages/auth/admin-login' })
-      return
-    }
     const res = await request.get('/admin/dashboard')
-    if (res.code === 200) {
-      data.value = {
-        totalUsers: res.data.totalUsers || 0,
-        totalActivities: res.data.totalActivities || 0,
-        totalOrganizations: res.data.totalOrganizations || 0,
-        totalVolunteerHours: res.data.totalVolunteerHours || 0,
-        topVolunteers: res.data.topVolunteers || [],
-        topOrganizations: res.data.topOrganizations || [],
-        activityTypeDistribution: res.data.activityTypeDistribution || []
-      }
+    if (res.code === 200 && res.data) {
+      d.value = { ...d.value, ...res.data }
     } else {
-      error.value = res.msg || '加载失败'
+      loadErr.value = res.msg || '加载失败'
     }
-  } catch (err) {
-    error.value = '网络连接失败，请检查后端服务是否启动'
-    console.error('Dashboard load error:', err)
+  } catch (e) {
+    loadErr.value = e.message || '网络错误'
   } finally {
     loading.value = false
   }
 }
 
+const go = (p) => {
+  const urls = { users:'/pages/admin/users', activities:'/pages/admin/activities', organizations:'/pages/admin/organizations', 'sign-approvals':'/pages/admin/sign-approvals' }
+  uni.navigateTo({ url: urls[p] })
+}
+
 const handleLogout = () => {
   uni.removeStorageSync('adminToken')
-  uni.removeStorageSync('adminUsername')
   uni.redirectTo({ url: '/pages/auth/admin-login' })
 }
 
-onMounted(() => loadData())
+onMounted(() => loadAll())
 </script>
 
 <style lang="scss" scoped>
-.dashboard-container { min-height: 100vh; background: #f0f2f5; padding-bottom: 40rpx; }
-.top-bar {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 24rpx 30rpx; background: linear-gradient(135deg, #1a1a2e, #16213e);
-  .title { font-size: 36rpx; font-weight: bold; color: #fff; }
-  .logout { font-size: 28rpx; color: rgba(255,255,255,0.7); padding: 8rpx 16rpx; }
+.page { min-height: 100vh; background: #0f1923; padding: 0 0 40rpx; }
+.top-bar { display: flex; justify-content: space-between; align-items: center; padding: 30rpx 30rpx 20rpx; background: #1a2736;
+  .title { font-size: 36rpx; font-weight: 700; color: #fff; }
+  .logout { font-size: 26rpx; color: #f44336; }
 }
-.loading-box, .error-box {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 100rpx 0; color: #999; font-size: 28rpx;
-  .retry-btn { margin-top: 30rpx; padding: 12rpx 40rpx; background: #667eea; color: #fff; border-radius: 40rpx; border: none; font-size: 28rpx; }
+.loading, .err { text-align: center; padding: 100rpx 0; color: #8899aa; font-size: 28rpx; }
+.stats { display: flex; padding: 20rpx 20rpx; gap: 12rpx; }
+.stat { flex: 1; background: #1a2736; border-radius: 14rpx; padding: 28rpx 16rpx; text-align: center;
+  .n { display: block; font-size: 44rpx; font-weight: 800; }
+  .l { display: block; font-size: 22rpx; margin-top: 4rpx; color: #8899aa; }
+  &.s1 .n { color: #667eea; } &.s2 .n { color: #4caf50; } &.s3 .n { color: #ff9800; } &.s4 .n { color: #00bcd4; }
 }
-.stats-row {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16rpx; padding: 24rpx;
-  .stat-card {
-    background: #fff; border-radius: 16rpx; padding: 30rpx; text-align: center;
-    &.primary { border-left: 6rpx solid #667eea; }
-    &.success { border-left: 6rpx solid #4caf50; }
-    &.warning { border-left: 6rpx solid #ff9800; }
-    &.info { border-left: 6rpx solid #2196f3; }
-    .stat-num { display: block; font-size: 48rpx; font-weight: bold; color: #333; }
-    .stat-label { display: block; font-size: 24rpx; color: #999; margin-top: 8rpx; }
+.actions { display: flex; padding: 0 20rpx; gap: 16rpx; margin-bottom: 20rpx; }
+.act { flex: 1; background: #1a2736; border-radius: 14rpx; padding: 24rpx 0; text-align: center; color: #8899aa; font-size: 24rpx;
+  text:first-child { display: block; font-size: 40rpx; margin-bottom: 6rpx; }
+}
+.chart-card { background: #1a2736; border-radius: 14rpx; margin: 0 20rpx 16rpx; padding: 24rpx; }
+.sec-title { font-size: 28rpx; font-weight: 600; color: #ccd6e0; display: block; margin-bottom: 20rpx; }
+.bar-row { display: flex; align-items: center; margin-bottom: 14rpx; }
+.bar-name { width: 120rpx; font-size: 22rpx; color: #8899aa; flex-shrink: 0; }
+.bar-track { flex: 1; height: 24rpx; background: #0f1923; border-radius: 12rpx; overflow: hidden; margin: 0 12rpx; }
+.bar-fill { height: 100%; border-radius: 12rpx; transition: width 0.6s; }
+.bar-val { width: 60rpx; font-size: 22rpx; color: #ccd6e0; text-align: right; flex-shrink: 0; }
+.rank { display: flex; align-items: center; padding: 12rpx 0; border-bottom: 1rpx solid #253544;
+  .rk { width: 44rpx; height: 44rpx; border-radius: 50%; background: #253544; color: #8899aa; font-size: 22rpx; display: flex; align-items: center; justify-content: center; margin-right: 16rpx;
+    &.top { background: #667eea; color: #fff; }
   }
+  .rn { flex: 1; font-size: 26rpx; color: #ccd6e0; }
+  .rh { font-size: 26rpx; color: #667eea; font-weight: 600; }
 }
-.quick-actions {
-  display: flex; gap: 16rpx; padding: 0 24rpx 24rpx;
-  .action-item {
-    flex: 1; background: #fff; border-radius: 16rpx; padding: 30rpx 20rpx; text-align: center;
-    .action-icon { font-size: 40rpx; }
-    .action-text { display: block; font-size: 24rpx; color: #666; margin-top: 8rpx; }
-  }
-}
-.section {
-  background: #fff; border-radius: 16rpx; margin: 0 24rpx 24rpx; padding: 30rpx;
-  .section-title { font-size: 30rpx; font-weight: bold; color: #333; margin-bottom: 24rpx; }
-}
-.rank-list {
-  .rank-item {
-    display: flex; align-items: center; padding: 16rpx 0; border-bottom: 1rpx solid #f0f0f0;
-    &:last-child { border-bottom: none; }
-    .rank-num {
-      width: 48rpx; height: 48rpx; border-radius: 50%; background: #eee; display: flex;
-      align-items: center; justify-content: center; font-size: 24rpx; color: #666; margin-right: 16rpx;
-      &.top { background: #ff9800; color: #fff; }
-    }
-    .rank-info { flex: 1; .rank-name { display: block; font-size: 28rpx; color: #333; } .rank-phone { display: block; font-size: 22rpx; color: #999; } }
-    .rank-name.flex-1 { flex: 1; }
-    .rank-hours { font-size: 28rpx; font-weight: bold; color: #667eea; }
-  }
-}
+.no-data { display: block; text-align: center; color: #556; font-size: 24rpx; padding: 20rpx 0; }
 </style>

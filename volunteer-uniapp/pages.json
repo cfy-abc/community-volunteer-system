@@ -125,6 +125,12 @@
       "style": {
         "navigationBarTitleText": "我的活动"
       }
+    },
+    {
+      "path": "pages/admin/sign-approvals",
+      "style": {
+        "navigationBarTitleText": "签到审批"
+      }
     }
   ],
   "globalStyle": {
