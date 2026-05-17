@@ -19,7 +19,14 @@
       </view>
     </view>
 
-    <view class="activity-info">
+    <!-- Tab切换 -->
+    <view class="tabs">
+      <view class="tab" :class="{ active: currentTab === 'detail' }" @tap="currentTab = 'detail'">活动详情</view>
+      <view class="tab" :class="{ active: currentTab === 'applicants' }"
+        v-if="isActivityCreator" @tap="currentTab = 'applicants'; loadApplicants()">报名名单</view>
+    </view>
+
+    <view class="activity-info" v-if="currentTab === 'detail'">
       <view class="info-section">
         <view class="info-item"><text class="label">活动时间</text><text class="value">{{ formatDate(activity.startTime) }} - {{ formatDate(activity.endTime) }}</text></view>
         <view class="info-item"><text class="label">活动地点</text><text class="value">{{ activity.location }}</text></view>
@@ -38,15 +45,26 @@
         <view class="condition-list"><view class="condition-item" v-for="(cond, idx) in activity.conditions" :key="idx"><text class="condition-dot">•</text><text class="condition-text">{{ cond }}</text></view></view>
       </view>
 
-      <view class="feedback-section" v-if="activity.feedbacks && activity.feedbacks.length">
-        <text class="section-title">志愿者反馈</text>
-        <view class="feedback-list">
-          <view class="feedback-item" v-for="fb in activity.feedbacks" :key="fb.id">
-            <view class="feedback-user"><image :src="fb.avatar || '/static/images/default-avatar.png'" class="user-avatar" mode="aspectFill"></image><text class="user-name">{{ fb.name }}</text></view>
-            <text class="feedback-content">{{ fb.content }}</text><text class="feedback-time">{{ fb.time }}</text>
-          </view>
-        </view>
+      <!-- 留言板区域 -->
+      <CommentSection
+        :activityId="activityId"
+        :isActivityCreator="isActivityCreator"
+        :hasParticipated="hasRegistered"
+      />
+    </view>
+
+    <!-- 报名名单Tab内容 -->
+    <view class="applicants-section" v-if="currentTab === 'applicants'">
+      <view class="export-bar">
+        <button class="export-btn" @tap="exportApplicants">导出Excel</button>
       </view>
+      <view class="applicant-card" v-for="(a, i) in applicants" :key="i">
+        <text class="app-name">{{ a.applicantName }}</text>
+        <text class="app-info">{{ a.applicantPhone }} | {{ a.applicantEmail }}</text>
+        <text class="app-info">紧急联系人: {{ a.emergencyContact }} {{ a.emergencyPhone }}</text>
+        <text class="app-info" v-if="a.remarks">备注: {{ a.remarks }}</text>
+      </view>
+      <view v-if="applicants.length === 0" class="empty-applicants">暂无报名者</view>
     </view>
 
     <view class="bottom-action" v-if="isLoggedIn">
@@ -54,7 +72,7 @@
         <text class="iconfont" :class="{ 'icon-favorite-fill': isFavorite, 'icon-favorite': !isFavorite }"></text>
         <text class="btn-text">{{ isFavorite ? '已收藏' : '收藏' }}</text>
       </view>
-      <button class="apply-btn" :class="{ disabled: !canApply }" @tap="applyActivity" :disabled="!canApply">{{ applyButtonText }}</button>
+      <button class="apply-btn" :class="{ disabled: !canApply }" @tap="goToApply" :disabled="!canApply">{{ applyButtonText }}</button>
       <button v-if="showSignBtn" class="sign-btn" @tap="goToSignPage">{{ signStatus === 'checked_in' ? '签退' : '签到' }}</button>
     </view>
 
@@ -66,7 +84,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import request from '@/utils/request'
+import request, { decodeJwt } from '@/utils/request'
+import CommentSection from '@/components/activity/comment-section.vue'
 
 const getToken = () => uni.getStorageSync('token') || ''
 const isLoggedIn = computed(() => !!getToken())
@@ -76,12 +95,24 @@ const activity = ref({})
 const isFavorite = ref(false)
 const signStatus = ref('not_start')
 const loading = ref(true)
+const currentTab = ref('detail')
+const applicants = ref([])
 
 const isActivityOpen = computed(() => activity.value.status === 1)
 const hasRegistered = computed(() => signStatus.value !== 'not_start')
-const canApply = computed(() => isActivityOpen.value && !hasRegistered.value && (activity.value.appliedCount || 0) < (activity.value.maxParticipants || 0))
+const isActivityCreator = computed(() => {
+  const token = uni.getStorageSync('token')
+  if (!token) return false
+  const decoded = decodeJwt(token)
+  return decoded && decoded.userId === activity.value.creatorId
+})
+const canApply = computed(() =>
+  isActivityOpen.value && !hasRegistered.value && !isActivityCreator.value &&
+  (activity.value.appliedCount || 0) < (activity.value.maxParticipants || 0) && !loading.value
+)
 const applyButtonText = computed(() => {
   if (!isActivityOpen.value) return '活动已结束'
+  if (isActivityCreator.value) return '您发布的活动'
   if (hasRegistered.value) return '已报名'
   if ((activity.value.appliedCount || 0) >= (activity.value.maxParticipants || 0)) return '名额已满'
   return '立即报名'
@@ -91,40 +122,72 @@ const showSignBtn = computed(() => isLoggedIn.value && isActivityOpen.value && h
 const loadActivity = async () => {
   try {
     const res = await request.get(`/activities/${activityId.value}`)
-    if (res.code === 200) activity.value = res.data
-    else uni.showToast({ title: res.msg || '加载活动失败', icon: 'none' })
+    if (res.code === 200) {
+      activity.value = res.data
+      // Parse conditions if it's a JSON string
+      if (typeof activity.value.conditions === 'string') {
+        try {
+          activity.value.conditions = JSON.parse(activity.value.conditions)
+        } catch (e) {
+          activity.value.conditions = []
+        }
+      }
+    } else uni.showToast({ title: res.msg || '加载活动失败', icon: 'none' })
   } catch (err) { uni.showToast({ title: '网络错误', icon: 'none' }) }
 }
 
-const loadSignStatus = async () => {
+const loadSignStatus = async (retry = true) => {
   if (!isLoggedIn.value) return
   try {
     const res = await request.get(`/activities/${activityId.value}/sign-status`)
     if (res.code === 200) signStatus.value = res.data.status
-  } catch (err) {}
+  } catch (err) {
+    if (retry) {
+      setTimeout(() => loadSignStatus(false), 300)
+    }
+  }
 }
 
-const applyActivity = async () => {
-  if (!canApply.value) return uni.showToast({ title: applyButtonText.value, icon: 'none' })
-  uni.showModal({
-    title: '确认报名',
-    content: `确定要报名参加"${activity.value.title}"吗？`,
-    success: async (modalRes) => {
-      if (!modalRes.confirm) return
-      try {
-        const res = await request.post(`/activities/${activityId.value}/register`)
-        if (res.code === 200) {
-          uni.showToast({ title: '报名成功', icon: 'success' })
-          activity.value.appliedCount = (activity.value.appliedCount || 0) + 1
-          await loadSignStatus()
-        } else uni.showToast({ title: res.msg || '报名失败', icon: 'none' })
-      } catch (err) { uni.showToast({ title: '网络错误', icon: 'none' }) }
-    }
-  })
+const goToApply = () => {
+  if (!canApply.value) {
+    uni.showToast({ title: applyButtonText.value, icon: 'none' })
+    return
+  }
+  uni.navigateTo({ url: `/pages/activities/apply?id=${activityId.value}` })
+}
+
+const loadApplicants = async () => {
+  try {
+    const res = await request.get(`/activities/${activityId.value}/applicants`)
+    if (res.code === 200) applicants.value = res.data || []
+  } catch (e) {}
+}
+
+const exportApplicants = async () => {
+  try {
+    uni.showLoading({ title: '导出中...' })
+    const res = await uni.request({
+      url: request.config.baseUrl + `/api/activities/${activityId.value}/applicants/export`,
+      method: 'GET',
+      responseType: 'arraybuffer',
+      header: { Authorization: 'Bearer ' + uni.getStorageSync('token') }
+    })
+    // #ifdef H5
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = '报名名单.xlsx'; a.click()
+    window.URL.revokeObjectURL(url)
+    // #endif
+    // #ifndef H5
+    uni.saveFile({ tempFilePath: res.tempFilePath, success: () => uni.showToast({ title: '导出成功', icon: 'success' }) })
+    // #endif
+    uni.hideLoading()
+  } catch (e) { uni.hideLoading(); uni.showToast({ title: '导出失败', icon: 'none' }) }
 }
 
 const toggleFavorite = () => { isFavorite.value = !isFavorite.value; uni.showToast({ title: isFavorite.value ? '已收藏' : '已取消收藏', icon: 'success' }) }
-const goToSignPage = () => { const type = signStatus.value === 'not_start' ? 'checkin' : 'checkout'; uni.navigateTo({ url: `/pages/activity/sign?id=${activityId.value}&type=${type}` }) }
+const goToSignPage = () => { const type = signStatus.value === 'not_start' ? 'checkin' : 'checkout'; uni.navigateTo({ url: `/pages/activities/sign?id=${activityId.value}&type=${type}` }) }
 const goBack = () => uni.navigateBack()
 const goToLogin = () => uni.navigateTo({ url: '/pages/auth/login' })
 const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleString() : ''
@@ -364,5 +427,21 @@ onLoad(async (options) => {
   justify-content: center;
   z-index: 999;
   .loading-text { font-size: 32rpx; color: #666; }
+}
+
+.tabs { display: flex; margin: 20rpx 30rpx; background: #fff; border-radius: 12rpx; overflow: hidden;
+  .tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 28rpx; color: #888;
+    &.active { color: #667eea; font-weight: bold; border-bottom: 4rpx solid #667eea; }
+  }
+}
+.applicants-section { padding: 0 30rpx;
+  .export-bar { text-align: right; margin-bottom: 16rpx;
+    .export-btn { padding: 10rpx 24rpx; background: #4caf50; color: #fff; border-radius: 20rpx; font-size: 24rpx; border: none; }
+  }
+  .applicant-card { background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 12rpx;
+    .app-name { font-size: 28rpx; font-weight: bold; color: #333; display: block; }
+    .app-info { font-size: 24rpx; color: #666; display: block; margin-top: 6rpx; }
+  }
+  .empty-applicants { text-align: center; padding: 60rpx 0; color: #999; }
 }
 </style>
