@@ -308,6 +308,56 @@ public class ActivityController {
         }
     }
 
+    /**
+     * 获取活动的待审批签到记录（仅活动发布方可用）
+     */
+    @GetMapping("/{id}/sign-approvals")
+    public Result getActivitySignApprovals(@RequestHeader("Authorization") String token,
+                                           @PathVariable Integer id) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            // Verify user is the activity creator
+            Activity activity = activityService.getActivityDetail(id);
+            if (!activity.getCreatorId().equals(userId)) {
+                return Result.error("只有活动发布方可以查看审批列表");
+            }
+            List<Map<String, Object>> approvals = activityService.getPendingApprovals(id);
+            return Result.success(approvals);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 通过签到审批（仅活动发布方可用）
+     */
+    @PutMapping("/sign-approvals/{recordId}/approve")
+    public Result approveSignRecord(@RequestHeader("Authorization") String token,
+                                     @PathVariable Integer recordId) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            activityService.approveSignRecord(userId, recordId);
+            return Result.success("审批通过");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 拒绝签到审批（仅活动发布方可用）
+     */
+    @PutMapping("/sign-approvals/{recordId}/reject")
+    public Result rejectSignRecord(@RequestHeader("Authorization") String token,
+                                    @PathVariable Integer recordId) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            activityService.rejectSignRecord(userId, recordId);
+            return Result.success("已拒绝");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
     private Integer getUserIdFromToken(String token) throws Exception {
         if (token == null) throw new Exception("未提供Token");
         return jwtUtils.getUserIdFromToken(token);

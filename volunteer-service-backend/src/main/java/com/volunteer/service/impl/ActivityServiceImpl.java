@@ -446,4 +446,58 @@ public class ActivityServiceImpl implements ActivityService {
             return bos.toByteArray();
         }
     }
+
+    @Override
+    public List<Map<String, Object>> getPendingApprovals(Integer activityId) throws Exception {
+        return signRecordMapper.findPendingByActivity(activityId);
+    }
+
+    @Override
+    @Transactional
+    public void approveSignRecord(Integer operatorUserId, Integer recordId) throws Exception {
+        SignRecord record = signRecordMapper.findById(recordId);
+        if (record == null) throw new Exception("签到记录不存在");
+
+        Activity activity = activityMapper.findById(record.getActivityId());
+        if (activity == null) throw new Exception("活动不存在");
+        if (!activity.getCreatorId().equals(operatorUserId)) {
+            throw new Exception("只有活动发布方可以进行审批");
+        }
+        if (record.getApprovalStatus() != null && record.getApprovalStatus() != 0) {
+            throw new Exception("该记录已处理");
+        }
+
+        double hours = record.getHoursEarned() != null && record.getHoursEarned() > 0
+                ? record.getHoursEarned() : 0.5;
+        signRecordMapper.approveRecord(recordId, hours);
+
+        // Update user volunteer hours
+        User user = userMapper.findById(record.getUserId());
+        if (user != null) {
+            int earnedHours = (int) Math.round(hours);
+            if (earnedHours < 1) earnedHours = 1;
+            user.setVolunteerHours(user.getVolunteerHours() + earnedHours);
+            user.setTotalEarnedHours(user.getTotalEarnedHours() + earnedHours);
+            userMapper.updateHours(user);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void rejectSignRecord(Integer operatorUserId, Integer recordId) throws Exception {
+        SignRecord record = signRecordMapper.findById(recordId);
+        if (record == null) throw new Exception("签到记录不存在");
+
+        Activity activity = activityMapper.findById(record.getActivityId());
+        if (activity == null) throw new Exception("活动不存在");
+        if (!activity.getCreatorId().equals(operatorUserId)) {
+            throw new Exception("只有活动发布方可以进行审批");
+        }
+        if (record.getApprovalStatus() != null && record.getApprovalStatus() != 0) {
+            throw new Exception("该记录已处理");
+        }
+
+        record.setApprovalStatus(2);
+        signRecordMapper.updateApprovalStatus(record);
+    }
 }

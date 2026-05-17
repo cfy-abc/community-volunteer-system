@@ -19,4 +19,7 @@ public interface ActivityService {
     void applyForActivity(Integer userId, Integer activityId, Map<String, String> formData) throws Exception;
     List<Map<String, Object>> getApplicants(Integer activityId) throws Exception;
     byte[] exportApplicants(Integer activityId) throws Exception;
+    List<Map<String, Object>> getPendingApprovals(Integer activityId) throws Exception;
+    void approveSignRecord(Integer operatorUserId, Integer recordId) throws Exception;
+    void rejectSignRecord(Integer operatorUserId, Integer recordId) throws Exception;
 }
