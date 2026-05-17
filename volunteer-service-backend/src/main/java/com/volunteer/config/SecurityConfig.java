@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,6 +21,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -27,29 +29,34 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // 1. OPTIONS 预检请求全部放行
+                        // 1. OPTIONS preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // 2. 精确放行登录和注册接口
+                        // 2. Public auth endpoints
                         .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/ping").permitAll()
                         .requestMatchers(HttpMethod.POST, "/admin/login").permitAll()
-
-                        // 3. 放行公开接口(活动列表/详情可公开查看)
-                        .requestMatchers(HttpMethod.GET, "/activities/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/organizations/**").permitAll()
-
-                        // 4. Swagger 文档（开发环境）
+                        .requestMatchers(HttpMethod.POST, "/api/users/wechat/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/wechat/auth-url").permitAll()
+                        // 3. Public GET — activity list and detail are public read
+                        .requestMatchers(HttpMethod.GET, "/api/activities", "/api/activities/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/organizations/**").permitAll()
+                        // 4. Uploads publicly accessible
+                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/api/upload", "/api/upload/batch").permitAll()
+                        .requestMatchers("/upload", "/upload/batch").permitAll()
+                        // 5. Swagger
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-
-                        // 5. 所有其他请求都需要认证
+                        // 6. Admin endpoints require ADMIN role
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        // 7. All other requests need authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())); // 启用CORS并应用配置
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         return http.build();
     }
@@ -68,13 +75,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 开发环境允许所有来源，生产环境应改为具体域名
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:*", "http://127.0.0.1:*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Arrays.asList("Content-Disposition"));
         configuration.setMaxAge(3600L);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

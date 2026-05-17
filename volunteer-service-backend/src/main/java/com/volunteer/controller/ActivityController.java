@@ -2,6 +2,8 @@ package com.volunteer.controller;
 
 import com.volunteer.dto.ActivityDTO;
 import com.volunteer.entity.Activity;
+import com.volunteer.entity.ActivityComment;
+import com.volunteer.service.ActivityCommentService;
 import com.volunteer.service.ActivityService;
 import com.volunteer.utils.JwtUtils;
 import com.volunteer.utils.Result;
@@ -13,11 +15,14 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/activities")
+@RequestMapping("/api/activities")
 public class ActivityController {
 
     @Autowired
     private ActivityService activityService;
+
+    @Autowired
+    private ActivityCommentService commentService;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -31,7 +36,7 @@ public class ActivityController {
         try {
             Integer userId = getUserIdFromToken(token);
             activityService.publishActivity(userId, activityDTO);
-            return Result.success("活动发布成功，请等待审核");
+            return Result.success("活动发布成功");
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
@@ -148,11 +153,110 @@ public class ActivityController {
         }
     }
 
-    private Integer getUserIdFromToken(String token) throws Exception {
-        if (token == null || !token.startsWith("Bearer ")) {
-            throw new Exception("无效的Token");
+    /**
+     * 获取活动评论列表
+     */
+    @GetMapping("/{id}/comments")
+    public Result getComments(@PathVariable Integer id) {
+        try {
+            List<ActivityComment> comments = commentService.getComments(id);
+            return Result.success(comments);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
         }
-        String actualToken = token.substring(7);
-        return jwtUtils.getUserIdFromToken(actualToken);
+    }
+
+    /**
+     * 获取评论的回复列表
+     */
+    @GetMapping("/comments/{commentId}/replies")
+    public Result getReplies(@PathVariable Integer commentId) {
+        try {
+            List<ActivityComment> replies = commentService.getReplies(commentId);
+            return Result.success(replies);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 添加评论
+     */
+    @PostMapping("/{id}/comments")
+    public Result addComment(@RequestHeader("Authorization") String token,
+                             @PathVariable Integer id,
+                             @RequestBody Map<String, String> params) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            String content = params.get("content");
+            String userTag = params.get("userTag");
+            if (content == null || content.trim().isEmpty()) {
+                return Result.error("评论内容不能为空");
+            }
+            ActivityComment comment = commentService.addComment(userId, id, content, userTag);
+            return Result.success(comment);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 回复评论
+     */
+    @PostMapping("/comments/{commentId}/reply")
+    public Result replyToComment(@RequestHeader("Authorization") String token,
+                                 @PathVariable Integer commentId,
+                                 @RequestBody Map<String, String> params) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            String content = params.get("content");
+            String userTag = params.get("userTag");
+            if (content == null || content.trim().isEmpty()) {
+                return Result.error("回复内容不能为空");
+            }
+            ActivityComment reply = commentService.replyToComment(userId, commentId, content, userTag);
+            return Result.success(reply);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 组织者扫描志愿者二维码签到（反扫码）
+     */
+    @PostMapping("/{id}/organizer-checkin")
+    public Result organizerCheckIn(@RequestHeader("Authorization") String token,
+                                   @PathVariable Integer id,
+                                   @RequestBody Map<String, Object> params) {
+        try {
+            Integer organizerUserId = getUserIdFromToken(token);
+            Integer volunteerUserId = params.get("volunteerUserId") != null ?
+                    Integer.parseInt(params.get("volunteerUserId").toString()) : null;
+            String qrToken = params.get("qrToken") != null ? params.get("qrToken").toString() : null;
+            activityService.organizerCheckIn(organizerUserId, volunteerUserId, id, qrToken);
+            return Result.success("签到成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 删除评论
+     */
+    @DeleteMapping("/comments/{commentId}")
+    public Result deleteComment(@RequestHeader("Authorization") String token,
+                                @PathVariable Integer commentId) {
+        try {
+            Integer userId = getUserIdFromToken(token);
+            commentService.deleteComment(userId, commentId);
+            return Result.success("删除成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    private Integer getUserIdFromToken(String token) throws Exception {
+        if (token == null) throw new Exception("未提供Token");
+        return jwtUtils.getUserIdFromToken(token);
     }
 }

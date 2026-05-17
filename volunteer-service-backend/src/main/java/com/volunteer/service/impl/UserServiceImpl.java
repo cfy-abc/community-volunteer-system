@@ -4,14 +4,23 @@ import com.volunteer.dto.UserDTO;
 import com.volunteer.dto.OrganizationDTO;
 import com.volunteer.entity.Organization;
 import com.volunteer.entity.User;
+import com.volunteer.entity.VolunteerRecord;
 import com.volunteer.mapper.OrganizationMapper;
 import com.volunteer.mapper.UserMapper;
+import com.volunteer.mapper.VolunteerRecordMapper;
 import com.volunteer.service.UserService;
 import com.volunteer.utils.JwtUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
+import java.util.Scanner;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -24,6 +33,18 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private OrganizationMapper organizationMapper;
+
+    @Autowired
+    private VolunteerRecordMapper volunteerRecordMapper;
+
+    @Value("${wechat.app-id:YOUR_WECHAT_APPID}")
+    private String wechatAppId;
+
+    @Value("${wechat.app-secret:YOUR_WECHAT_APPSECRET}")
+    private String wechatAppSecret;
+
+    @Value("${wechat.oauth2-redirect-uri:http://localhost:5173}")
+    private String wechatRedirectUri;
 
     @Override
     @Transactional
@@ -41,7 +62,7 @@ public class UserServiceImpl implements UserService {
         user.setVolunteerHours(0);
         user.setTotalEarnedHours(0);
         user.setTotalSpentHours(0);
-        user.setStatus(0); // 0待审核，管理员审核后变为1
+        user.setStatus(1); // 普通用户注册后直接通过，无需审核
         user.setAvatar("/default_avatar.png");
 
         userMapper.insert(user);
@@ -63,7 +84,26 @@ public class UserServiceImpl implements UserService {
         }
 
         // 生成JWT token
-        return jwtUtils.generateToken(user.getUserId(), user.getUsername());
+        return jwtUtils.generateToken(user.getUserId(), user.getUsername(), "user");
+    }
+
+    @Override
+    public UserDTO updateUserInfo(Integer userId, Map<String, String> params) throws Exception {
+        User user = userMapper.findById(userId);
+        if (user == null) throw new Exception("用户不存在");
+        if (params.containsKey("username")) {
+            // 检查新用户名是否已被占用
+            String newUsername = params.get("username");
+            User existing = userMapper.findByUsername(newUsername);
+            if (existing != null && !existing.getUserId().equals(userId)) {
+                throw new Exception("该用户名已被占用");
+            }
+            user.setUsername(newUsername);
+        }
+        if (params.containsKey("phone")) user.setPhone(params.get("phone"));
+        if (params.containsKey("avatar")) user.setAvatar(params.get("avatar"));
+        userMapper.updateInfo(user);
+        return getUserById(userId);
     }
 
     @Override
@@ -84,6 +124,11 @@ public class UserServiceImpl implements UserService {
         userDTO.setTotalSpentHours(user.getTotalSpentHours());
         userDTO.setStatus(user.getStatus());
         userDTO.setAvatar(user.getAvatar());
+        userDTO.setIdCard(user.getIdCard());
+        userDTO.setRealNameStatus(user.getRealNameStatus() != null ? user.getRealNameStatus() : 0);
+        userDTO.setIsOrgUser(user.getIsOrgUser() != null ? user.getIsOrgUser() : 0);
+        userDTO.setOrgPosition(user.getOrgPosition());
+        userDTO.setOrgDepartment(user.getOrgDepartment());
 
         return userDTO;
     }
@@ -105,6 +150,11 @@ public class UserServiceImpl implements UserService {
         userDTO.setTotalSpentHours(user.getTotalSpentHours());
         userDTO.setStatus(user.getStatus());
         userDTO.setAvatar(user.getAvatar());
+        userDTO.setIdCard(user.getIdCard());
+        userDTO.setRealNameStatus(user.getRealNameStatus() != null ? user.getRealNameStatus() : 0);
+        userDTO.setIsOrgUser(user.getIsOrgUser() != null ? user.getIsOrgUser() : 0);
+        userDTO.setOrgPosition(user.getOrgPosition());
+        userDTO.setOrgDepartment(user.getOrgDepartment());
 
         return userDTO;
     }
@@ -129,5 +179,173 @@ public class UserServiceImpl implements UserService {
         organization.setLogo(organizationDTO.getLogo() != null ? organizationDTO.getLogo() : "/default_org_logo.png");
 
         organizationMapper.insert(organization);
+    }
+
+    @Override
+    public void verifyIdentity(Integer userId, String realName, String idCard) throws Exception {
+        User user = userMapper.findById(userId);
+        if (user == null) throw new Exception("用户不存在");
+        // 校验姓名是否与注册时一致
+        if (user.getRealName() != null && !user.getRealName().equals(realName)) {
+            throw new Exception("姓名与注册时不一致，认证失败");
+        }
+        // 系统自动审核通过
+        userMapper.updateRealNameStatus(userId, realName, idCard, 1);
+    }
+
+    @Override
+    public Map<String, Object> getVerifyStatus(Integer userId) throws Exception {
+        User user = userMapper.findById(userId);
+        if (user == null) throw new Exception("用户不存在");
+        Map<String, Object> status = new java.util.HashMap<>();
+        status.put("realNameStatus", user.getRealNameStatus() != null ? user.getRealNameStatus() : 0);
+        status.put("idCard", user.getIdCard());
+        return status;
+    }
+
+    @Override
+    public void applyOrgUpgrade(Integer userId, String position, String department, String reason) throws Exception {
+        User user = userMapper.findById(userId);
+        if (user == null || user.getStatus() != 1) throw new Exception("用户不存在或未通过审核");
+        userMapper.insertOrgUpgradeApplication(userId, position, department, reason);
+    }
+
+    @Override
+    public Map<String, Object> getOrgUpgradeStatus(Integer userId) throws Exception {
+        User user = userMapper.findById(userId);
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("isOrgUser", user.getIsOrgUser() != null && user.getIsOrgUser() == 1);
+        result.put("orgPosition", user.getOrgPosition());
+        result.put("orgDepartment", user.getOrgDepartment());
+        result.put("status", 0);
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getUserStats(Integer userId) throws Exception {
+        Map<String, Object> stats = new java.util.HashMap<>();
+        User user = userMapper.findById(userId);
+        if (user == null) throw new Exception("用户不存在");
+
+        stats.put("volunteerHours", user.getVolunteerHours());
+        stats.put("totalEarnedHours", user.getTotalEarnedHours());
+        stats.put("totalSpentHours", user.getTotalSpentHours());
+        // 注册至今所有服务时长
+        stats.put("allTimeHours", user.getTotalEarnedHours() != null ? user.getTotalEarnedHours() : 0);
+
+        // Monthly stats (last 6 months from DB; fallback to empty)
+        java.util.List<Map<String, Object>> monthlyStats = userMapper.getMonthlyStats(userId);
+        if (monthlyStats == null || monthlyStats.isEmpty()) {
+            monthlyStats = new java.util.ArrayList<>();
+            String[] fallbackMonths = {"1月","2月","3月","4月","5月","6月"};
+            for (String m : fallbackMonths) {
+                Map<String, Object> entry = new java.util.HashMap<>();
+                entry.put("month", m); entry.put("hours", 0);
+                monthlyStats.add(entry);
+            }
+        }
+        stats.put("monthlyStats", monthlyStats);
+
+        // Activity type distribution
+        java.util.List<Map<String, Object>> typeDistribution = userMapper.getActivityTypeDistribution(userId);
+        stats.put("typeDistribution", typeDistribution);
+
+        // Yearly stats (last 3 years)
+        java.util.List<Map<String, Object>> yearlyStats = userMapper.getYearlyStats(userId);
+        stats.put("yearlyStats", yearlyStats);
+
+        return stats;
+    }
+
+    @Override
+    public void cancelApplication(Integer userId, Integer recordId) throws Exception {
+        VolunteerRecord record = volunteerRecordMapper.findById(recordId);
+        if (record == null) throw new Exception("记录不存在");
+        if (!record.getUserId().equals(userId)) throw new Exception("只能取消自己的报名");
+        if (!"registered".equals(record.getStatus())) throw new Exception("只能取消待参加状态的活动");
+        volunteerRecordMapper.cancel(recordId);
+    }
+
+    @Override
+    public String getWechatAuthUrl() throws Exception {
+        String redirectUri = java.net.URLEncoder.encode(wechatRedirectUri, "UTF-8");
+        return String.format(
+            "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_userinfo&state=volunteer#wechat_redirect",
+            wechatAppId, redirectUri
+        );
+    }
+
+    @Override
+    public String wechatLogin(String code) throws Exception {
+        // 1. 通过code换取access_token和openid
+        String accessTokenUrl = String.format(
+            "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code",
+            wechatAppId, wechatAppSecret, code
+        );
+
+        String response = httpGet(accessTokenUrl);
+        Map<String, Object> tokenData = com.alibaba.fastjson.JSON.parseObject(response);
+
+        if (tokenData.containsKey("errcode")) {
+            throw new Exception("微信登录失败: " + tokenData.get("errmsg"));
+        }
+
+        String openid = (String) tokenData.get("openid");
+        String accessToken = (String) tokenData.get("access_token");
+
+        // 2. 获取微信用户信息
+        String userInfoUrl = String.format(
+            "https://api.weixin.qq.com/sns/userinfo?access_token=%s&openid=%s&lang=zh_CN",
+            accessToken, openid
+        );
+        String userInfoResp = httpGet(userInfoUrl);
+        Map<String, Object> wxUserInfo = com.alibaba.fastjson.JSON.parseObject(userInfoResp);
+
+        if (wxUserInfo.containsKey("errcode")) {
+            throw new Exception("获取微信用户信息失败: " + wxUserInfo.get("errmsg"));
+        }
+
+        String nickname = (String) wxUserInfo.get("nickname");
+        String headimgurl = (String) wxUserInfo.get("headimgurl");
+
+        // 3. 查询是否已有微信绑定用户（通过username=openid）
+        User user = userMapper.findByUsername("wx_" + openid);
+        if (user == null) {
+            // 4. 自动注册新用户
+            user = new User();
+            user.setUsername("wx_" + openid);
+            user.setPassword(jwtUtils.encodePassword(openid)); // 用openid作为初始密码
+            user.setRealName(nickname != null ? nickname : "微信用户");
+            user.setPhone("");
+            user.setVolunteerHours(0);
+            user.setTotalEarnedHours(0);
+            user.setTotalSpentHours(0);
+            user.setStatus(1); // 微信用户自动通过审核
+            user.setAvatar(headimgurl != null ? headimgurl : "/default_avatar.png");
+            userMapper.insert(user);
+            // 重新查询获取userId
+            user = userMapper.findByUsername("wx_" + openid);
+        }
+
+        if (user.getStatus() != 1) {
+            throw new Exception("账户未通过审核，请联系管理员");
+        }
+
+        return jwtUtils.generateToken(user.getUserId(), user.getUsername(), "user");
+    }
+
+    private String httpGet(String urlStr) throws Exception {
+        URL url = new URL(urlStr);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(5000);
+        conn.setReadTimeout(5000);
+        try (InputStream is = conn.getResponseCode() == 200 ? conn.getInputStream() : conn.getErrorStream()) {
+            if (is == null) throw new Exception("HTTP请求失败: " + conn.getResponseCode());
+            Scanner scanner = new Scanner(is, "UTF-8");
+            String text = scanner.useDelimiter("\\A").next();
+            scanner.close();
+            return text;
+        }
     }
 }

@@ -25,10 +25,11 @@ public class JwtUtils {
     /**
      * 生成Token
      */
-    public String generateToken(Integer userId, String username) {
+    public String generateToken(Integer userId, String username, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
+        claims.put("role", role != null ? role : "user");
 
         return Jwts.builder()
                 .setClaims(claims)
@@ -39,14 +40,34 @@ public class JwtUtils {
     }
 
     /**
-     * 从Token中获取用户ID
+     * 从 Token 中获取用户 ID
      */
     public Integer getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token)
-                .getBody();
-        return Integer.parseInt(claims.get("userId").toString());
+        try {
+            // 自动去除 "Bearer " 前缀
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Claims claims = Jwts.parser()
+                    .setSigningKey(secret)
+                    .parseClaimsJws(token)
+                    .getBody();
+            return Integer.parseInt(claims.get("userId").toString());
+        } catch (Exception e) {
+            System.err.println("Token 解析异常: " + e.getMessage());
+            throw new RuntimeException("无效的 Token");
+        }
+    }
+
+    /**
+     * 从 Token 中获取角色
+     */
+    public String getRoleFromToken(String token) {
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        Claims claims = Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+        return claims.get("role", String.class);
     }
 
     /**

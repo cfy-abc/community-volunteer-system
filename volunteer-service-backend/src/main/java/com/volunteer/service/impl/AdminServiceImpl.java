@@ -33,7 +33,7 @@ public class AdminServiceImpl implements AdminService {
             throw new Exception("密码错误");
         }
         adminMapper.updateLoginTime(admin.getAdminId());
-        return jwtUtils.generateToken(admin.getAdminId(), admin.getUsername());
+        return jwtUtils.generateToken(admin.getAdminId(), admin.getUsername(), "admin");
     }
 
     @Override

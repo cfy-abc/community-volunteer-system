@@ -6,12 +6,14 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -28,9 +30,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 1. 跳过登录和注册端点
         String path = request.getRequestURI();
-        if (path.equals("/api/users/login") || path.equals("/api/users/register") || path.equals("/admin/login")) {
+        if (path.equals("/api/users/login") || path.equals("/api/users/register") || path.equals("/admin/login")
+                || path.equals("/api/users/wechat/login") || path.equals("/api/users/wechat/auth-url")
+                || path.startsWith("/api/users/wechat")) {
             chain.doFilter(request, response);
             return;
+        }
+
+        // 1.1 跳过公开的 GET 请求（活动列表、组织列表等）
+        String method = request.getMethod();
+        if ("GET".equals(method)) {
+            if (path.equals("/activities") || path.equals("/api/activities")
+                    || path.startsWith("/activities/") || path.startsWith("/api/activities/")
+                    || path.startsWith("/organizations/") || path.startsWith("/api/organizations/")) {
+                chain.doFilter(request, response);
+                return;
+            }
         }
 
         // 2. 检查是否是OPTIONS预检请求
@@ -42,15 +57,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 3. 处理实际请求
         try {
             String jwt = parseJwt(request);
-            if (jwt != null && jwtUtils.validateToken(jwt)) {
-                Integer userId = jwtUtils.getUserIdFromToken(jwt);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, null);
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (jwt != null && !jwt.isEmpty()) {
+                if (jwtUtils.validateToken(jwt)) {
+                    Integer userId = jwtUtils.getUserIdFromToken(jwt);
+                    String role = jwtUtils.getRoleFromToken(jwt);
+                    List<SimpleGrantedAuthority> authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_" + role.toUpperCase())
+                    );
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                } else {
+                    // Invalid token — return 401 for non-public paths
+                    if (!isPublicPath(request)) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"code\":401,\"msg\":\"Token无效或已过期\"}");
+                        return;
+                    }
+                }
             }
         } catch (Exception e) {
-            // 不处理异常，让请求继续
+            if (!isPublicPath(request)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":401,\"msg\":\"认证失败\"}");
+                return;
+            }
         }
 
         chain.doFilter(request, response);
@@ -62,5 +96,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return headerAuth.substring(7);
         }
         return null;
+    }
+
+    private boolean isPublicPath(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+        return path.equals("/api/users/login") || path.equals("/api/users/register")
+            || path.equals("/admin/login") || path.startsWith("/api/users/wechat")
+            || ("GET".equals(method) && (path.startsWith("/api/activities") || path.startsWith("/api/organizations")));
     }
 }
