@@ -66,6 +66,12 @@
       }
     },
     {
+      "path": "pages/activities/sign-approval",
+      "style": {
+        "navigationBarTitleText": "签到审批"
+      }
+    },
+    {
       "path": "pages/my/applications",
       "style": {
         "navigationBarTitleText": "我的报名"
@@ -75,12 +81,6 @@
       "path": "pages/my/certificates",
       "style": {
         "navigationBarTitleText": "我的证书"
-      }
-    },
-    {
-      "path": "pages/sign/checkin",
-      "style": {
-        "navigationBarTitleText": "签到签退"
       }
     },
     {
@@ -106,6 +106,24 @@
       "path": "pages/admin/organizations",
       "style": {
         "navigationBarTitleText": "组织管理"
+      }
+    },
+    {
+      "path": "pages/auth/verify-identity",
+      "style": {
+        "navigationBarTitleText": "实名认证"
+      }
+    },
+    {
+      "path": "pages/my/org-upgrade",
+      "style": {
+        "navigationBarTitleText": "申请组织用户"
+      }
+    },
+    {
+      "path": "pages/my/my-activities",
+      "style": {
+        "navigationBarTitleText": "我的活动"
       }
     }
   ],
