@@ -26,4 +26,5 @@ public class Activity {
     private String tags; // 标签列表（JSON数组格式）
     private String conditions; // 报名条件列表（JSON数组格式）
     private String feedbacks; // 志愿者反馈（JSON数组格式，可后续收集）
+    private String signMethod; // Allowed sign-in methods, comma separated, default gps,scan,photo
 }

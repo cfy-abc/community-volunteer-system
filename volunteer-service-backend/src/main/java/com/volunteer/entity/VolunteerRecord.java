@@ -15,4 +15,10 @@ public class VolunteerRecord {
     private Date checkOutTime;
     private String checkInLocation;
     private String checkInPhoto;
+    private String applicantName;
+    private String applicantPhone;
+    private String applicantEmail;
+    private String emergencyContact;
+    private String emergencyPhone;
+    private String remarks;
 }
