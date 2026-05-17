@@ -4,6 +4,7 @@ import com.volunteer.entity.Admin;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface AdminMapper {
