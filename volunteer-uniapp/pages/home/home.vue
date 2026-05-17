@@ -37,11 +37,11 @@
           </view>
           <text class="action-text">我的证书</text>
         </view>
-        <view class="action-item" @tap="toProfile">
+        <view class="action-item" @tap="goToMyActivities">
           <view class="action-icon bg-purple">
             <text class="iconfont icon-profile"></text>
           </view>
-          <text class="action-text">个人中心</text>
+          <text class="action-text">我的活动</text>
         </view>
       </view>
     </view>
@@ -72,47 +72,59 @@
       </view>
     </view>
 
-    <!-- 统计卡片（保持不变） -->
-    <view class="stats-section">
-      <view class="stat-card">
-        <view class="stat-icon bg-blue">
-          <text class="iconfont icon-clock"></text>
+    <!-- 服务概览看板 -->
+    <view class="overview-section" v-if="hasToken">
+      <view class="overview-card">
+        <view class="ov-item">
+          <text class="ov-num">{{ volunteerHours }}</text>
+          <text class="ov-lbl">可用时长 (h)</text>
         </view>
-        <view class="stat-info">
-          <text class="stat-number">{{ volunteerHours }}</text>
-          <text class="stat-label">志愿服务时长</text>
+        <view class="ov-item">
+          <text class="ov-num">{{ totalEarned }}</text>
+          <text class="ov-lbl">累计赚取 (h)</text>
+        </view>
+        <view class="ov-item">
+          <text class="ov-num">{{ currentMonthHours }}</text>
+          <text class="ov-lbl">本月服务 (h)</text>
         </view>
       </view>
-      <view class="stat-card">
-        <view class="stat-icon bg-green">
-          <text class="iconfont icon-check"></text>
-        </view>
-        <view class="stat-info">
-          <text class="stat-number">{{ completedActivities }}</text>
-          <text class="stat-label">已完成活动</text>
-        </view>
+      <view class="overview-tip" @tap="toProfile">
+        <text>查看详细数据看板 ></text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import store from '@/store'
+import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import request from '@/utils/request'
 
 const unreadCount = ref(0)
 const recommendActivities = ref([])
 const volunteerHours = ref(0)
-const completedActivities = ref(0)
+const totalEarned = ref(0)
+const monthHours = ref(0)
+const monthlyStats = ref([])
+const hasToken = ref(false)
+const userInfo = ref({})
 const userDisplayName = computed(() => {
-  const ui = uni.getStorageSync('userInfo')
-  if (ui && ui.realName) return ui.realName
-  if (ui && ui.username) return ui.username
+  if (userInfo.value.realName) return userInfo.value.realName
+  if (userInfo.value.username) return userInfo.value.username
+  const cached = uni.getStorageSync('userInfo')
+  if (cached && cached.realName) return cached.realName
+  if (cached && cached.username) return cached.username
   return uni.getStorageSync('token') ? '志愿者' : '游客'
 })
 const userAvatar = computed(() => {
-  return store.state.auth.userInfo?.avatar || '/static/images/default-avatar.png'
+  return userInfo.value.avatar || '/static/images/default-avatar.png'
+})
+const currentMonthHours = computed(() => {
+  if (!monthlyStats.value || monthlyStats.value.length === 0) return 0
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+  const found = monthlyStats.value.find(s => s.month === currentMonth)
+  return found ? (found.hours || 0) : 0
 })
 
 const loadData = async () => {
@@ -135,14 +147,28 @@ const loadData = async () => {
   // 加载用户信息（需要登录）
   const token = uni.getStorageSync('token')
   if (token) {
+    hasToken.value = true
     try {
       const res = await request.get('/api/users/info')
       if (res.code === 200 && res.data) {
+        userInfo.value = res.data
         volunteerHours.value = res.data.volunteerHours || 0
-        completedActivities.value = Math.floor((res.data.totalEarnedHours || 0) / 2)
+        totalEarned.value = res.data.totalEarnedHours || 0
+        uni.setStorageSync('userInfo', res.data)
       }
     } catch (err) {
       console.error('加载用户信息失败:', err)
+    }
+    // 加载月度总计
+    try {
+      const statsRes = await request.get('/api/users/stats')
+      if (statsRes.code === 200 && statsRes.data) {
+        const ms = statsRes.data.monthlyStats || []
+        monthlyStats.value = ms
+        monthHours.value = ms.length > 0 ? (ms[ms.length - 1].hours || 0) : 0
+      }
+    } catch (err) {
+      console.error('加载统计数据失败:', err)
     }
   }
 }
@@ -152,13 +178,22 @@ const goToActivityList = () => {
   uni.switchTab({ url: '/pages/activities/list' }) // 活动列表是 tabBar 页面
 }
 const goToMyApplications = () => {
+  if (!hasToken.value) { uni.showToast({ title: '请先登录', icon: 'none' }); return }
   uni.navigateTo({ url: '/pages/my/applications' })
 }
 const goToCertificates = () => {
+  if (!hasToken.value) { uni.showToast({ title: '请先登录', icon: 'none' }); return }
   uni.navigateTo({ url: '/pages/my/certificates' })
 }
+const goToMyActivities = () => {
+  if (!uni.getStorageSync('token')) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  uni.navigateTo({ url: '/pages/my/my-activities' })
+}
 const toProfile = () => {
-  uni.switchTab({ url: '/pages/profile/profile' }) // 个人中心是 tabBar 页面
+  uni.switchTab({ url: '/pages/profile/profile' })
 }
 const goToPublish = () => {
   if (!uni.getStorageSync('token')) {
@@ -186,7 +221,7 @@ const formatDate = (dateString) => {
 }
 
 // 生命周期
-onMounted(() => {
+onShow(() => {
   loadData()
 })
 </script>
@@ -355,11 +390,15 @@ onMounted(() => {
   }
 }
 
+.chart-section {
+  padding: 0 20rpx;
+}
+
 .stats-section {
   display: flex;
   gap: 20rpx;
   padding: 0 20rpx;
-  
+
   .stat-card {
     flex: 1;
     background: #fff;
@@ -395,5 +434,39 @@ onMounted(() => {
   }
 }
 
-/* 已删除底部悬浮发布按钮，避免冗余 */
+// 服务概览看板
+.overview-section {
+  background: #fff;
+  margin: 20rpx;
+  border-radius: 20rpx;
+  padding: 30rpx 20rpx;
+}
+.overview-card {
+  display: flex;
+  .ov-item {
+    flex: 1;
+    text-align: center;
+    .ov-num {
+      display: block;
+      font-size: 42rpx;
+      font-weight: 800;
+      background: linear-gradient(135deg, #667eea, #7b5ea7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .ov-lbl {
+      display: block;
+      font-size: 22rpx;
+      color: #999;
+      margin-top: 6rpx;
+    }
+  }
+}
+.overview-tip {
+  text-align: center;
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  color: #667eea;
+}
+
 </style>

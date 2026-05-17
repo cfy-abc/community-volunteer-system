@@ -15,7 +15,7 @@
     </view>
 
     <view class="list">
-      <view class="list-item" v-for="a in activities" :key="a.activityId">
+      <view class="list-item" v-for="a in activities" :key="a.activityId" @tap="viewDetail(a.activityId)">
         <view class="item-info">
           <text class="name">{{ a.title }}</text>
           <text class="detail">地点: {{ a.location }} | 人数: {{ a.currentParticipants }}/{{ a.maxParticipants }}</text>
@@ -68,6 +68,7 @@ const auditActivity = async (activityId, status) => {
 }
 
 const getStatusText = (s) => ({ 0: '已取消', 1: '招募中', 2: '进行中', 3: '已结束', 4: '审核中' })[s] || '未知'
+const viewDetail = (id) => uni.navigateTo({ url: `/pages/activities/detail?id=${id}` })
 const goBack = () => uni.navigateBack()
 
 onMounted(() => loadActivities())

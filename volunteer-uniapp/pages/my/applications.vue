@@ -111,15 +111,15 @@ const applications = ref([])
 const currentTab = ref('all')
 const loading = ref(false)
 
-// 标签配置
+// 标签配置（与数据库 status 字段一致）
 const tabs = ref([
   { key: 'all', label: '全部', count: 0 },
-  { key: 'applied', label: '待参加', count: 0 },
+  { key: 'registered', label: '待签到', count: 0 },
+  { key: 'attended', label: '已签到', count: 0 },
   { key: 'completed', label: '已完成', count: 0 },
   { key: 'cancelled', label: '已取消', count: 0 }
 ])
 
-// 计算属性
 const filteredApplications = computed(() => {
   if (currentTab.value === 'all') return applications.value
   return applications.value.filter(app => app.status === currentTab.value)
@@ -129,103 +129,34 @@ const filteredApplications = computed(() => {
 const fetchApplications = async () => {
   loading.value = true
   try {
-    // 假设后端接口为 GET /user/applications
-    const res = await request.get('/user/applications')
-    if (res.code === 200) {
-      applications.value = res.data || []
+    const res = await request.get('/api/users/applications', { page: 1, size: 50 })
+    if (res.code === 200 && res.data) {
+      applications.value = (res.data.list || []).map(item => ({
+        id: item.recordId,
+        activityId: item.activityId,
+        activityTitle: item.activityTitle || '活动',
+        activityTime: item.startTime || '',
+        applyTime: item.registerTime || '',
+        status: item.status || 'applied',
+        duration: item.hoursEarned || 0,
+        signStatus: item.signStatus,
+        activityCover: '/default_activity_poster.jpg'
+      }))
       updateTabCounts()
-    } else {
-      uni.showToast({ title: res.msg || '加载失败', icon: 'none' })
-      // 降级使用模拟数据（仅开发测试）
-      if (process.env.NODE_ENV === 'development') loadMockData()
     }
   } catch (err) {
     console.error(err)
-    uni.showToast({ title: '网络错误，使用模拟数据', icon: 'none' })
-    if (process.env.NODE_ENV === 'development') loadMockData()
   } finally {
     loading.value = false
   }
-}
-
-
-// 例如带查询参数
-//const res = await request.get('/user/applications', { page: 1, size: 10 })
-
-// 模拟数据（仅供开发）
-const loadMockData = () => {
-  applications.value = [
-    {
-      id: 1,
-      activityId: 1,
-      activityTitle: '社区环保清洁活动',
-      activityTime: '2024-01-15 09:00',
-      applyTime: '2024-01-10 14:30',
-      status: 'completed',
-      duration: 3,
-      certificateId: 'cert_001',
-      activityCover: '/static/images/activity1.jpg',
-      activityStatus: 2,       // 活动状态: 1进行中 2已结束
-      signStatus: 'checked_out' // 签到状态: not_start, checked_in, checked_out
-    },
-    {
-      id: 2,
-      activityId: 2,
-      activityTitle: '敬老院慰问活动',
-      activityTime: '2024-01-16 14:00',
-      applyTime: '2024-01-11 10:15',
-      status: 'applied',
-      duration: 2,
-      activityCover: '/static/images/activity2.jpg',
-      activityStatus: 1,
-      signStatus: 'not_start'
-    },
-    {
-      id: 3,
-      activityId: 3,
-      activityTitle: '儿童图书馆助教',
-      activityTime: '2024-01-17 10:00',
-      applyTime: '2024-01-12 16:45',
-      status: 'completed',
-      duration: 4,
-      certificateId: 'cert_002',
-      activityCover: '/static/images/activity3.jpg',
-      activityStatus: 2,
-      signStatus: 'checked_out'
-    },
-    {
-      id: 4,
-      activityId: 4,
-      activityTitle: '医院导诊服务',
-      activityTime: '2024-01-18 08:00',
-      applyTime: '2024-01-13 09:20',
-      status: 'applied',
-      duration: 3,
-      activityCover: '/static/images/activity4.jpg',
-      activityStatus: 1,
-      signStatus: 'checked_in'   // 已签到但未签退
-    },
-    {
-      id: 5,
-      activityId: 5,
-      activityTitle: '文化广场文艺演出',
-      activityTime: '2024-01-19 19:00',
-      applyTime: '2024-01-14 13:10',
-      status: 'cancelled',
-      duration: 0,
-      activityCover: '/static/images/activity5.jpg',
-      activityStatus: 2,
-      signStatus: 'not_start'
-    }
-  ]
-  updateTabCounts()
 }
 
 // 更新各标签页的数量统计
 const updateTabCounts = () => {
   const counts = {
     all: applications.value.length,
-    applied: applications.value.filter(app => app.status === 'applied').length,
+    registered: applications.value.filter(app => app.status === 'registered').length,
+    attended: applications.value.filter(app => app.status === 'attended').length,
     completed: applications.value.filter(app => app.status === 'completed').length,
     cancelled: applications.value.filter(app => app.status === 'cancelled').length
   }
@@ -239,45 +170,45 @@ const switchTab = (tabKey) => {
   currentTab.value = tabKey
 }
 
-// 状态文本和样式
+// 状态文本和样式（数据库字段: registered/attended/completed/cancelled）
 const getStatusText = (status) => {
   const statusMap = {
-    'applied': '待参加',
+    'registered': '待参加',
+    'attended': '已签到',
     'completed': '已完成',
-    'cancelled': '已取消',
-    'processing': '处理中'
+    'cancelled': '已取消'
   }
-  return statusMap[status] || '未知'
+  return statusMap[status] || status || '未知'
 }
 
 const getStatusClass = (status) => {
   const classMap = {
-    'applied': 'status-applied',
+    'registered': 'status-applied',
+    'attended': 'status-processing',
     'completed': 'status-completed',
-    'cancelled': 'status-cancelled',
-    'processing': 'status-processing'
+    'cancelled': 'status-cancelled'
   }
   return classMap[status] || 'status-default'
 }
 
 // 按钮显示控制
-const canViewDetails = (status) => status === 'applied' || status === 'completed'
-const canCancel = (status) => status === 'applied'
+const canViewDetails = (status) => true
+const canCancel = (status) => status === 'registered'
 const canDownloadCertificate = (status) => status === 'completed'
 
-// 签到按钮显示条件：活动进行中（activityStatus === 1）且报名状态为待参加（applied）且未签到（signStatus !== 'checked_in'）
+// 签到按钮：已报名未签到 (signStatus===0)
 const showSignButton = (app) => {
-  return app.status === 'applied' && app.activityStatus === 1 && app.signStatus !== 'checked_in'
+  return app.status === 'registered' && (app.signStatus === 0 || app.signStatus == null)
 }
 
-// 签退按钮显示条件：活动进行中（activityStatus === 1）且报名状态为待参加（applied）且已签到（signStatus === 'checked_in'）
+// 签退按钮：已签到未签退 (signStatus===1)
 const showCheckoutButton = (app) => {
-  return app.status === 'applied' && app.activityStatus === 1 && app.signStatus === 'checked_in'
+  return (app.status === 'registered' || app.status === 'attended') && app.signStatus === 1
 }
 
 // 跳转到签到/签退页面
 const goToSign = (activityId, type) => {
-  uni.navigateTo({ url: `/pages/activity/sign?id=${activityId}&type=${type}` })
+  uni.navigateTo({ url: `/pages/activities/sign?id=${activityId}&type=${type}` })
 }
 
 // 其他方法
@@ -299,7 +230,7 @@ const cancelApplication = async (applicationId) => {
       if (res.confirm) {
         try {
           // 调用后端取消接口
-          const result = await request.post(`/applications/${applicationId}/cancel`)
+          const result = await request.post(`/api/users/applications/${applicationId}/cancel`)
           if (result.code === 200) {
             uni.showToast({ title: '取消成功', icon: 'success' })
             await fetchApplications() // 刷新列表
