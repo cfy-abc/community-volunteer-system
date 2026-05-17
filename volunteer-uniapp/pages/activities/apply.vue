@@ -17,18 +17,9 @@
       <view class="activity-details">
         <text class="activity-title">{{ activity.title }}</text>
         <view class="activity-meta">
-          <view class="meta-item">
-            <text class="iconfont icon-time"></text>
-            <text class="meta-text">{{ formatDate(activity.startTime) }}</text>
-          </view>
-          <view class="meta-item">
-            <text class="iconfont icon-location"></text>
-            <text class="meta-text">{{ activity.location }}</text>
-          </view>
-          <view class="meta-item">
-            <text class="iconfont icon-users"></text>
-            <text class="meta-text">{{ activity.appliedCount }}/{{ activity.maxParticipants }}人</text>
-          </view>
+          <view class="meta-item"><text class="mi-icon">&#128197;</text><text class="meta-text">{{ formatDate(activity.startTime) }}</text></view>
+          <view class="meta-item"><text class="mi-icon">&#128205;</text><text class="meta-text">{{ activity.location }}</text></view>
+          <view class="meta-item"><text class="mi-icon">&#128101;</text><text class="meta-text">{{ activity.appliedCount }}/{{ activity.maxParticipants }}人</text></view>
         </view>
       </view>
     </view>
@@ -142,7 +133,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-// import { activityApi } from '@/api/index' // 暂时未使用，可保留或注释
+import request from '@/utils/request'
 
 // 页面参数
 const activityId = ref('')
@@ -177,24 +168,13 @@ const errors = reactive({
   agreed: ''
 })
 
-// 模拟活动详情
-const mockActivity = {
-  id: 1,
-  title: '社区环保清洁活动',
-  startTime: '2024-01-15 09:00',
-  location: '市中心公园',
-  appliedCount: 45,
-  maxParticipants: 50,
-  coverImage: '/static/images/activity1.jpg'
-}
-
 // 计算属性
 const canSubmit = computed(() => {
-  return formData.name && 
-         formData.phone && 
-         formData.email && 
-         formData.emergencyContact && 
-         formData.emergencyPhone && 
+  return formData.name &&
+         formData.phone &&
+         formData.email &&
+         formData.emergencyContact &&
+         formData.emergencyPhone &&
          formData.agreed &&
          !Object.values(errors).some(error => error)
 })
@@ -202,10 +182,19 @@ const canSubmit = computed(() => {
 // 方法
 const loadData = async () => {
   try {
-    // 模拟加载活动详情
-    activity.value = { ...mockActivity }
-    
-    // 如果用户已登录，尝试获取用户信息填充表单
+    const res = await request.get(`/activities/${activityId.value}`)
+    if (res.code === 200) {
+      activity.value = {
+        id: res.data.activityId,
+        title: res.data.title,
+        startTime: res.data.startTime,
+        location: res.data.location,
+        appliedCount: res.data.currentParticipants || 0,
+        maxParticipants: res.data.maxParticipants || 0,
+        coverImage: res.data.poster || '/static/images/default-activity.jpg'
+      }
+    }
+
     const userInfo = uni.getStorageSync('userInfo')
     if (userInfo) {
       formData.name = userInfo.realName || ''
@@ -214,10 +203,7 @@ const loadData = async () => {
     }
   } catch (error) {
     console.error('加载活动详情失败:', error)
-    uni.showToast({
-      title: '加载活动信息失败',
-      icon: 'none'
-    })
+    uni.showToast({ title: '加载活动信息失败', icon: 'none' })
   }
 }
 
@@ -315,27 +301,23 @@ const submitApply = async () => {
   loading.value = true
 
   try {
-    // 模拟报名请求
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // 模拟成功响应
-    uni.showToast({
-      title: '报名成功',
-      icon: 'success'
+    const res = await request.post(`/activities/${activityId.value}/apply`, {
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email,
+      emergencyContact: formData.emergencyContact,
+      emergencyPhone: formData.emergencyPhone,
+      remarks: formData.remarks
     })
-
-    // 延迟跳转到我的报名页面
-    setTimeout(() => {
-      uni.redirectTo({
-        url: '/pages/my/applications'
-      })
-    }, 1500)
+    if (res.code === 200) {
+      uni.showToast({ title: '报名成功', icon: 'success' })
+      setTimeout(() => { uni.navigateBack() }, 1500)
+    } else {
+      uni.showToast({ title: res.msg || '报名失败', icon: 'none' })
+    }
   } catch (error) {
     console.error('报名失败:', error)
-    uni.showToast({
-      title: '报名失败，请重试',
-      icon: 'none'
-    })
+    uni.showToast({ title: '报名失败，请重试', icon: 'none' })
   } finally {
     loading.value = false
   }
@@ -347,283 +329,35 @@ const submitApply = async () => {
 // })
 </script>
 
-<style lang="scss">
-.apply-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
-  padding-bottom: 120rpx;
-  padding-top: 88rpx; // 导航栏高度
-  
-  .custom-navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 88rpx;
-    background-color: #fff;
-    display: flex;
-    align-items: center;
-    padding: 0 30rpx;
-    z-index: 100;
-    
-    .nav-left {
-      width: 60rpx;
-      height: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      background-color: #f0f0f0;
-      
-      .icon-back {
-        font-size: 32rpx;
-        color: #666;
-      }
-    }
-    
-    .nav-center {
-      flex: 1;
-      text-align: center;
-      
-      .nav-title {
-        font-size: 36rpx;
-        font-weight: bold;
-        color: #333;
-      }
-    }
-    
-    .nav-right {
-      width: 60rpx;
-    }
-  }
-  
-  .activity-info {
-    background-color: #fff;
-    margin: 20rpx;
-    border-radius: 20rpx;
-    overflow: hidden;
-    
-    .activity-cover {
-      width: 100%;
-      height: 200rpx;
-    }
-    
-    .activity-details {
-      padding: 20rpx;
-      
-      .activity-title {
-        font-size: 32rpx;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 15rpx;
-      }
-      
-      .activity-meta {
-        display: flex;
-        flex-direction: column;
-        gap: 10rpx;
-        
-        .meta-item {
-          display: flex;
-          align-items: center;
-          font-size: 26rpx;
-          color: #666;
-          
-          .iconfont {
-            margin-right: 8rpx;
-            font-size: 24rpx;
-          }
-        }
-      }
-    }
-  }
-  
-  .apply-form {
-    padding: 0 20rpx;
-    
-    .form-section {
-      background-color: #fff;
-      border-radius: 20rpx;
-      padding: 30rpx;
-      margin-bottom: 20rpx;
-      
-      .section-title {
-        display: block;
-        font-size: 32rpx;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 20rpx;
-      }
-      
-      .form-item {
-        margin-bottom: 30rpx;
-        
-        &:last-child {
-          margin-bottom: 0;
-        }
-        
-        .label {
-          display: block;
-          font-size: 28rpx;
-          color: #333;
-          margin-bottom: 10rpx;
-          font-weight: 500;
-        }
-        
-        .input {
-          width: 100%;
-          height: 80rpx;
-          border: 2rpx solid #e0e0e0;
-          border-radius: 12rpx;
-          padding: 0 20rpx;
-          font-size: 28rpx;
-          
-          &:focus {
-            border-color: #667eea;
-          }
-        }
-        
-        .textarea-item {
-          .textarea {
-            width: 100%;
-            min-height: 120rpx;
-            border: 2rpx solid #e0e0e0;
-            border-radius: 12rpx;
-            padding: 20rpx;
-            font-size: 28rpx;
-            background-color: #fff;
-            
-            &:focus {
-              border-color: #667eea;
-            }
-          }
-        }
-        
-        .error-msg {
-          display: block;
-          font-size: 24rpx;
-          color: #f44336;
-          margin-top: 8rpx;
-        }
-      }
-    }
-    
-    .agreement-section {
-      background-color: #fff;
-      border-radius: 20rpx;
-      padding: 30rpx;
-      margin-bottom: 20rpx;
-      
-      .agreement-checkbox {
-        display: flex;
-        align-items: center;
-        
-        .checkbox {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 36rpx;
-          height: 36rpx;
-          border: 2rpx solid #ccc;
-          border-radius: 6rpx;
-          margin-right: 15rpx;
-          font-size: 24rpx;
-          color: #fff;
-          
-          &.checked {
-            background-color: #667eea;
-            border-color: #667eea;
-            &::after {
-              content: '✓';
-            }
-          }
-        }
-        
-        .agreement-text {
-          font-size: 26rpx;
-          color: #666;
-        }
-        
-        .agreement-link {
-          font-size: 26rpx;
-          color: #667eea;
-          text-decoration: underline;
-        }
-      }
-      
-      .error-msg {
-        display: block;
-        font-size: 24rpx;
-        color: #f44336;
-        margin-top: 8rpx;
-      }
-    }
-  }
-  
-  .apply-footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 20rpx 30rpx;
-    background-color: #fff;
-    border-top: 1rpx solid #f0f0f0;
-    
-    .submit-btn {
-      height: 80rpx;
-      background: #667eea;
-      color: #fff;
-      border: none;
-      border-radius: 40rpx;
-      font-size: 32rpx;
-      font-weight: 500;
-      
-      &.disabled {
-        background-color: #ccc;
-      }
-    }
-  }
-  
-  .loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    
-    .loading-content {
-      background-color: #fff;
-      padding: 40rpx;
-      border-radius: 20rpx;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      
-      .loading-spinner {
-        width: 40rpx;
-        height: 40rpx;
-        border: 4rpx solid #f0f0f0;
-        border-top: 4rpx solid #667eea;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      
-      .loading-text {
-        margin-top: 20rpx;
-        font-size: 28rpx;
-        color: #666;
-      }
-    }
-  }
+<style lang="scss" scoped>
+.apply-page { min-height: 100vh; background: #f0f2f5; padding-bottom: 120rpx; }
+.nav { display: flex; align-items: center; height: 88rpx; padding: 0 24rpx; background: #fff;
+  .nav-back { font-size: 36rpx; padding: 10rpx; }
+  .nav-title { flex: 1; text-align: center; font-size: 34rpx; font-weight: 700; color: #333; }
 }
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.act-card { background: #fff; margin: 16rpx 24rpx; border-radius: 16rpx; overflow: hidden; }
+.act-cover { width: 100%; height: 220rpx; }
+.act-body { padding: 20rpx 24rpx; }
+.act-title { font-size: 32rpx; font-weight: 700; color: #222; margin-bottom: 12rpx; display: block; }
+.act-meta { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.mi { display: flex; align-items: center; font-size: 24rpx; color: #888; }
+.mi-icon { margin-right: 6rpx; }
+.card { background: #fff; margin: 0 24rpx 16rpx; border-radius: 16rpx; padding: 24rpx; }
+.sec-title { font-size: 30rpx; font-weight: 700; color: #333; margin-bottom: 20rpx; display: flex; align-items: center; }
+.sec-icon { margin-right: 10rpx; }
+.field { margin-bottom: 24rpx; }
+.field-lbl { font-size: 26rpx; color: #555; display: block; margin-bottom: 8rpx; }
+.field-inp { width: 100%; height: 76rpx; padding: 0 20rpx; background: #f8f8f8; border: 2rpx solid #eee; border-radius: 12rpx; font-size: 28rpx; }
+.field-ta { width: 100%; min-height: 120rpx; padding: 16rpx 20rpx; background: #f8f8f8; border: 2rpx solid #eee; border-radius: 12rpx; font-size: 28rpx; }
+.err { font-size: 22rpx; color: #f44336; margin-top: 6rpx; display: block; }
+.agree { display: flex; align-items: center; padding: 16rpx 0; }
+.cb { width: 36rpx; height: 36rpx; border: 2rpx solid #ccc; border-radius: 6rpx; margin-right: 12rpx; display: flex; align-items: center; justify-content: center; font-size: 22rpx; color: transparent;
+  &.on { background: #667eea; border-color: #667eea; color: #fff; }
+}
+.agree-txt { font-size: 26rpx; color: #666; }
+.agree-link { color: #667eea; }
+.footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 16rpx 30rpx; background: #fff; }
+.submit { width: 100%; height: 84rpx; background: linear-gradient(135deg, #667eea, #7b5ea7); color: #fff; border: none; border-radius: 42rpx; font-size: 30rpx; font-weight: 600;
+  &.off { background: #ccc; }
 }
 </style>
