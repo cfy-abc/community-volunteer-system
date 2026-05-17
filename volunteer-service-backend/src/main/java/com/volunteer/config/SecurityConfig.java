@@ -38,18 +38,33 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/admin/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users/wechat/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/wechat/auth-url").permitAll()
-                        // 3. Public GET — activity list and detail are public read
-                        .requestMatchers(HttpMethod.GET, "/api/activities", "/api/activities/**").permitAll()
+                        // 3. Public GET — activity list / detail / comments are publicly readable
+                        .requestMatchers(HttpMethod.GET, "/api/activities").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/*/comments").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/comments/*/replies").permitAll()
+                        // 4. Authenticated GET — sign-status, applicants, sign-approvals
+                        .requestMatchers(HttpMethod.GET, "/api/activities/*/sign-status").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/*/sign-approvals").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/*/applicants", "/api/activities/*/applicants/export").authenticated()
+                        // 5. Authenticated POST/PUT/DELETE — activity operations
+                        .requestMatchers(HttpMethod.POST, "/api/activities/*/apply").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/activities/*/checkin", "/api/activities/*/checkout").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/activities/*/organizer-checkin").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/activities/*/comments", "/api/activities/comments/*/reply").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/activities/sign-approvals/*/approve", "/api/activities/sign-approvals/*/reject").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/activities/comments/*").authenticated()
+                        // 6. Public GET — organizations
                         .requestMatchers(HttpMethod.GET, "/api/organizations/**").permitAll()
-                        // 4. Uploads publicly accessible
+                        // 7. Uploads publicly accessible
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/upload", "/api/upload/batch").permitAll()
                         .requestMatchers("/upload", "/upload/batch").permitAll()
-                        // 5. Swagger
+                        // 8. Swagger
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        // 6. Admin endpoints require ADMIN role
+                        // 9. Admin endpoints require ADMIN role
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        // 7. All other requests need authentication
+                        // 10. All other requests need authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -75,11 +90,19 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        // 允许所有本地开发端口
         configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:*", "http://127.0.0.1:*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // 允许所有 HTTP 方法
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        // 允许所有请求头
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setExposedHeaders(Arrays.asList("Content-Disposition"));
+        // 暴露所有响应头(包括 Content-Disposition)
+        configuration.setExposedHeaders(Arrays.asList("*"));
+        // 允许携带凭证(cookies)
+        configuration.setAllowCredentials(true);
+        // 预检请求缓存时间
         configuration.setMaxAge(3600L);
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

@@ -45,7 +45,7 @@ const filterStatus = ref(null)
 
 const loadOrganizations = async () => {
   try {
-    const res = await request.get('/organizations')
+    const res = await request.get('/api/organizations')
     if (res.code === 200) {
       let list = res.data || []
       if (filterStatus.value !== null) {

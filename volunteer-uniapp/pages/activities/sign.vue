@@ -166,7 +166,7 @@ const doSign = async (data) => {
     if (!data.location) {
       data.location = gpsLocation.value || 'auto'
     }
-    const res = await request.post(`/activities/${activityId.value}/${endpoint}`, data)
+    const res = await request.post(`/api/activities/${activityId.value}/${endpoint}`, data)
     if (res.code === 200) {
       uni.showToast({ title: (isCheckin.value ? '签到' : '签退') + '成功', icon: 'success' })
       setTimeout(() => uni.navigateBack(), 1200)
@@ -187,7 +187,7 @@ const organizerScan = async () => {
   try {
     const qrData = JSON.parse(scanVolunteerInput.value)
     signing.value = true
-    const res = await request.post(`/activities/${activityId.value}/organizer-checkin`, {
+    const res = await request.post(`/api/activities/${activityId.value}/organizer-checkin`, {
       volunteerUserId: qrData.userId,
       qrToken: qrData.qrToken
     })
@@ -205,7 +205,7 @@ const organizerScan = async () => {
 // 检查签到状态
 const checkSignStatus = async () => {
   try {
-    const res = await request.get(`/activities/${activityId.value}/sign-status`)
+    const res = await request.get(`/api/activities/${activityId.value}/sign-status`)
     if (res.code === 200 && res.data) {
       const s = res.data
       if (s.status === 'not_start') {
@@ -225,7 +225,7 @@ const checkSignStatus = async () => {
 
 const loadActivity = async () => {
   try {
-    const res = await request.get(`/activities/${activityId.value}`)
+    const res = await request.get(`/api/activities/${activityId.value}`)
     if (res.code === 200 && res.data) {
       Object.assign(activity, res.data)
       signMethod.value = res.data.signMethod || 'gps,scan,photo'

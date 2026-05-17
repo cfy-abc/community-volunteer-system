@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:wpsCustomData="http://www.wps.cn/officeDocument/2013/wpsCustomData" mc:Ignorable="w14 w15 wp14">
+  <w:body>
+    <w:p w14:paraId="17D58CF0">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>当下问题：</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="075B794B">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>1.管理员登陆依旧网络错误</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="1EFA4834">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>2.前端活动列表，活动详情，首页等页面的种子数据依旧无法加载出来</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="3FD5A906">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>3.关于签到签退的页面功能无法正常显示</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="48E4AB6B">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>4.前端:./publish.vue页面中的活动标题，活动标签等输入框无法按键输入值</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="291D0B3C">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>5.普通用户登陆后个人中心页面显示 未登录；</w:t>
+      </w:r>
+      <w:bookmarkStart w:id="0" w:name="_GoBack"/>
+      <w:bookmarkEnd w:id="0"/>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>无法上传头像</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="401A52D4">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>6.依旧无法微信登录</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="31998252">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+    </w:p>
+    <w:p w14:paraId="515E1F45">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>还需完善的功能：</w:t>
+      <w:br w:type="textWrapping"/><w:t>1.每个发布的活动下面需要设置留言板，让已经参加过此活动的用户可以评价此活动，未参与过的用户也可以发表评论，参与讨论；活动发布方也可以在留言板进行回复（发布留言的用户需要带有标签：参与过/未参与/活动发布方/管理员）</w:t></w:r>
+      
+      
+    </w:p>
+    <w:p w14:paraId="6DB397BE">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>2.组织用户可以由普通用户经过认证转为组织用户，（认证需要如职位，所属社区/部门）</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="44F636AE">
+      <w:pPr>
+        <w:tabs>
+          <w:tab w:val="left" w:pos="692"/>
+        </w:tabs>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>3.每个用户注册成功之后都需要进行实名认证才能使用相关功能。</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="266F1CD0">
+      <w:pPr>
+        <w:tabs>
+          <w:tab w:val="left" w:pos="692"/>
+        </w:tabs>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>4.每个用户的服务数据我需要可视化ECharts/uCharts展示月度，年度时长统计等，可在首页展示看板，个人中心以折线图的方式，不要冗余。</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="1E022585">
+      <w:pPr>
+        <w:tabs>
+          <w:tab w:val="left" w:pos="692"/>
+        </w:tabs>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+    </w:p>
+    <w:p w14:paraId="554BBB1C">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>注意：</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="213BDA27">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>普通用户发布活动中设置的 奖励志愿时长 需要小于等于 用户自身可用的活动时长；领取活动的用户完成活动后直接拍照打卡/位置/二维码扫码 ，等待活动发布方审核通过即可领取奖励时长，活动发布方在48h内未进行审核的将系统自动通过审核</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="42DC6D8C">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+    </w:p>
+    <w:p w14:paraId="29D1BE3C">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>组织用户发布的活动时长计算规则：系统自动计算：服务时长=签退时间-签到时间；按实际签到签退时长计算；未签到/未签退则不计时长；管理员可手动修改时长（特殊情况）</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="34DC2546">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+    </w:p>
+    <w:p w14:paraId="3E37825C">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="eastAsia"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+        <w:t>这里的二维码扫码功能设置的反扫码，即需要活动发布方去扫描志愿者的动态二维码</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="172059EF">
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-US" w:eastAsia="zh-CN"/>
+        </w:rPr>
+      </w:pPr>
+    </w:p>
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="1440" w:right="1800" w:bottom="1440" w:left="1800" w:header="851" w:footer="992" w:gutter="0"/>
+      <w:cols w:space="425" w:num="1"/>
+      <w:docGrid w:type="lines" w:linePitch="312" w:charSpace="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>

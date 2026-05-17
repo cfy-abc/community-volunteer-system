@@ -1,6 +1,5 @@
 package com.volunteer.service.impl;
 
-import com.volunteer.entity.VolunteerRecord;
 import com.volunteer.mapper.VolunteerRecordMapper;
 import com.volunteer.service.VolunteerRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +15,7 @@ public class VolunteerRecordServiceImpl implements VolunteerRecordService {
     private VolunteerRecordMapper recordMapper;
 
     @Override
-    public List<VolunteerRecord> getUserRecords(Map<String, Object> params) {
+    public List<Map<String, Object>> getUserRecords(Map<String, Object> params) {
         return recordMapper.findPage(params);
     }
 

@@ -9,11 +9,11 @@
       <!-- CSS 回退：柱状图 -->
       <view v-else-if="!useEcharts && hasData && (type === 'bar' || type === 'line')" class="bar-chart">
         <view class="bar-item" v-for="(item, idx) in chartData" :key="idx">
-          <text class="bar-val">{{ item.hours }}h</text>
+          <text class="bar-val">{{ item.hours || item.value || 0 }}</text>
           <view class="bar-track">
             <view
               class="bar-fill"
-              :style="{ height: barPct(item.hours), background: barColor(idx) }"
+              :style="{ height: barPct(item.hours || item.value || 0), background: barColor(idx) }"
             ></view>
           </view>
           <text class="bar-label">{{ item.month || item.name || '' }}</text>

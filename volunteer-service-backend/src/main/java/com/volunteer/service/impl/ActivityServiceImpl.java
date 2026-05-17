@@ -143,60 +143,6 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     /**
-     * 签到活动（旧版本，基于recordId）
-     */
-    @Transactional
-    public void checkInActivity(Integer recordId, String location, String photo) throws Exception {
-        // 检查记录是否存在
-        VolunteerRecord record = recordMapper.findById(recordId);
-        if (record == null) {
-            throw new Exception("记录不存在");
-        }
-
-        // 检查活动状态
-        Activity activity = activityMapper.findById(record.getActivityId());
-        if (activity == null || activity.getStatus() != 2) { // 2表示进行中
-            throw new Exception("活动不在进行中状态");
-        }
-
-        // 检查是否已签到
-        if ("attended".equals(record.getStatus()) || "completed".equals(record.getStatus())) {
-            throw new Exception("您已签到");
-        }
-
-        // 签到
-        recordMapper.checkIn(recordId, "attended", location, photo);
-    }
-
-    /**
-     * 完成活动（旧版本，基于recordId）
-     */
-    @Transactional
-    public void completeActivity(Integer recordId, Integer hoursEarned) throws Exception {
-        // 检查记录是否存在
-        VolunteerRecord record = recordMapper.findById(recordId);
-        if (record == null) {
-            throw new Exception("记录不存在");
-        }
-
-        // 检查是否已签到
-        if (!"attended".equals(record.getStatus())) {
-            throw new Exception("请先签到");
-        }
-
-        // 完成活动
-        recordMapper.complete(recordId, hoursEarned);
-
-        // 更新用户时长
-        User user = userMapper.findById(record.getUserId());
-        if (user != null) {
-            user.setVolunteerHours(user.getVolunteerHours() + hoursEarned);
-            user.setTotalEarnedHours(user.getTotalEarnedHours() + hoursEarned);
-            userMapper.updateHours(user);
-        }
-    }
-
-    /**
      * 生成签到二维码token（包含活动ID+用户ID+时间戳+校验码）
      */
     private String generateQrToken(Integer activityId, Integer userId) {
@@ -297,6 +243,15 @@ public class ActivityServiceImpl implements ActivityService {
     public Map<String, Object> getSignStatus(Integer userId, Integer activityId) throws Exception {
         SignRecord record = signRecordMapper.findByUserAndActivity(userId, activityId);
         Map<String, Object> map = new HashMap<>();
+
+        if (record == null) {
+            // Auto-create SignRecord if user has a valid VolunteerRecord registration
+            VolunteerRecord vr = recordMapper.findByUserAndActivity(userId, activityId);
+            if (vr != null && "registered".equals(vr.getStatus())) {
+                createSignRecord(userId, activityId);
+                record = signRecordMapper.findByUserAndActivity(userId, activityId);
+            }
+        }
 
         if (record == null) {
             map.put("status", "not_start");

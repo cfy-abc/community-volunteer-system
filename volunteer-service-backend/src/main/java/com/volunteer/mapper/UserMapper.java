@@ -61,27 +61,42 @@ public interface UserMapper {
     int insertOrgUpgradeApplication(@Param("userId") Integer userId, @Param("position") String position,
                                     @Param("department") String department, @Param("reason") String reason);
 
-    @Select("SELECT a.type as name, COALESCE(SUM(vr.hours_earned), 0) as value " +
+    @Select("SELECT a.`type` as name, " +
+            "COALESCE(SUM(CASE WHEN sr.id IS NOT NULL AND sr.hours_earned > 0 THEN sr.hours_earned ELSE vr.hours_earned END), 0) as value " +
             "FROM volunteer_record vr " +
             "JOIN activity a ON vr.activity_id = a.activity_id " +
-            "WHERE vr.user_id = #{userId} GROUP BY a.type")
+            "LEFT JOIN sign_record sr ON vr.user_id = sr.user_id AND vr.activity_id = sr.activity_id " +
+            "WHERE vr.user_id = #{userId} AND vr.status != 'cancelled' " +
+            "GROUP BY a.`type`")
     List<Map<String, Object>> getActivityTypeDistribution(@Param("userId") Integer userId);
 
-    @Select("SELECT DATE_FORMAT(sr.checkout_time, '%Y-%m') as month, " +
-            "COALESCE(SUM(sr.hours_earned), 0) as hours " +
-            "FROM sign_record sr " +
-            "WHERE sr.user_id = #{userId} AND sr.approval_status IN (0, 1) " +
-            "AND sr.checkout_time IS NOT NULL " +
-            "GROUP BY DATE_FORMAT(sr.checkout_time, '%Y-%m') ORDER BY month ASC")
+    @Select("SELECT DATE_FORMAT(COALESCE(sr.checkout_time, vr.register_time), '%Y-%m') as month, " +
+            "COALESCE(SUM(CASE WHEN sr.id IS NOT NULL AND sr.hours_earned > 0 THEN sr.hours_earned ELSE 0 END), 0) as hours " +
+            "FROM volunteer_record vr " +
+            "LEFT JOIN sign_record sr ON vr.user_id = sr.user_id AND vr.activity_id = sr.activity_id " +
+            "WHERE vr.user_id = #{userId} AND vr.status != 'cancelled' " +
+            "GROUP BY DATE_FORMAT(COALESCE(sr.checkout_time, vr.register_time), '%Y-%m') ORDER BY month ASC")
     List<Map<String, Object>> getMonthlyStats(@Param("userId") Integer userId);
 
-    @Select("SELECT YEAR(sr.checkout_time) as year, " +
-            "COALESCE(SUM(sr.hours_earned), 0) as hours " +
-            "FROM sign_record sr " +
-            "WHERE sr.user_id = #{userId} AND sr.approval_status = 1 " +
-            "AND sr.checkout_time >= DATE_SUB(NOW(), INTERVAL 3 YEAR) " +
-            "GROUP BY YEAR(sr.checkout_time) ORDER BY year ASC")
+    @Select("SELECT YEAR(COALESCE(sr.checkout_time, vr.register_time)) as year, " +
+            "COALESCE(SUM(CASE WHEN sr.id IS NOT NULL AND sr.hours_earned > 0 THEN sr.hours_earned ELSE 0 END), 0) as hours " +
+            "FROM volunteer_record vr " +
+            "LEFT JOIN sign_record sr ON vr.user_id = sr.user_id AND vr.activity_id = sr.activity_id " +
+            "WHERE vr.user_id = #{userId} AND vr.status != 'cancelled' " +
+            "AND COALESCE(sr.checkout_time, vr.register_time) >= DATE_SUB(NOW(), INTERVAL 3 YEAR) " +
+            "GROUP BY YEAR(COALESCE(sr.checkout_time, vr.register_time)) ORDER BY year ASC")
     List<Map<String, Object>> getYearlyStats(@Param("userId") Integer userId);
+
+    // Load raw stats data for a user — one query, all stats computed in Java for consistency
+    @Select("SELECT vr.record_id, vr.activity_id, vr.hours_earned AS vrHours, vr.status, vr.register_time AS registerTime, " +
+            "sr.id AS srId, sr.hours_earned AS srHours, sr.checkin_time AS checkinTime, sr.checkout_time AS checkoutTime, sr.approval_status AS approvalStatus, " +
+            "a.type AS activityType, a.title AS activityTitle " +
+            "FROM volunteer_record vr " +
+            "JOIN activity a ON vr.activity_id = a.activity_id " +
+            "LEFT JOIN sign_record sr ON vr.user_id = sr.user_id AND vr.activity_id = sr.activity_id " +
+            "WHERE vr.user_id = #{userId} AND vr.status != 'cancelled' " +
+            "ORDER BY vr.register_time DESC")
+    List<Map<String, Object>> getUserStatsRaw(@Param("userId") Integer userId);
 
     // ===== 组织升级申请管理 =====
     @Select("SELECT a.*, u.username, u.real_name FROM org_upgrade_application a " +

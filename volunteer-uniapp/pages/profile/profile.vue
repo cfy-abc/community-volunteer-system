@@ -89,7 +89,19 @@
         <text>图表加载失败，点击重试</text>
       </view>
       <view v-else>
-        <ServiceChart type="bar" title="月度服务时长 (h)" :data="monthlyStats" />
+        <!-- 年月选择器 -->
+        <view class="month-picker">
+          <view class="picker-row">
+            <picker mode="selector" :range="yearOptions" :value="yearIndex" @change="onYearChange">
+              <view class="picker-val">{{ selectedYear }}年 &#9660;</view>
+            </picker>
+            <picker mode="selector" :range="monthOptions" :value="monthIndex" @change="onMonthChange">
+              <view class="picker-val">{{ selectedMonth ? selectedMonth + '月' : '全部月份' }} &#9660;</view>
+            </picker>
+          </view>
+          <text class="picker-total" v-if="filteredMonthlyHours > 0">所选时段合计: <text class="highlight">{{ filteredMonthlyHours }}h</text></text>
+        </view>
+        <ServiceChart type="bar" title="月度服务时长 (h)" :data="filteredMonthlyStats" />
         <ServiceChart type="pie" title="活动类型分布 (h)" :data="typeDistribution" />
       </view>
     </view>
@@ -127,6 +139,7 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import request from '@/utils/request'
+import store from '@/store'
 import ServiceChart from '@/components/charts/service-chart.vue'
 
 const profile = ref({})
@@ -202,6 +215,36 @@ const loadProfile = async () => {
   }
 }
 
+// 年月选择器
+const selectedYear = ref(new Date().getFullYear())
+const selectedMonth = ref(0) // 0 = 全部月份
+const yearIndex = ref(0)
+const monthIndex = ref(0)
+const years = [2025, 2026, 2027, 2028]
+const yearOptions = computed(() => years.map(y => y + '年'))
+const monthOptions = computed(() => ['全部月份', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'])
+
+const filteredMonthlyStats = computed(() => {
+  if (!monthlyStats.value || monthlyStats.value.length === 0) return []
+  if (selectedMonth.value === 0) return monthlyStats.value
+  const target = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}`
+  return monthlyStats.value.filter(s => s.month && s.month.startsWith(target))
+})
+
+const filteredMonthlyHours = computed(() => {
+  return filteredMonthlyStats.value.reduce((sum, s) => sum + (parseFloat(s.hours) || 0), 0)
+})
+
+const onYearChange = (e) => {
+  yearIndex.value = e.detail.value
+  selectedYear.value = years[e.detail.value]
+}
+
+const onMonthChange = (e) => {
+  monthIndex.value = e.detail.value
+  selectedMonth.value = e.detail.value // 0 = 全部
+}
+
 const loadStats = async () => {
   statsLoading.value = true
   chartError.value = false
@@ -211,6 +254,9 @@ const loadStats = async () => {
       monthlyStats.value = res.data.monthlyStats || []
       typeDistribution.value = res.data.typeDistribution || []
       allTimeHours.value = res.data.allTimeHours || res.data.totalEarnedHours || 0
+      // 初始化年份选择器索引
+      yearIndex.value = years.indexOf(selectedYear.value)
+      if (yearIndex.value < 0) yearIndex.value = 1
     }
   } catch (err) {
     console.error('加载统计数据失败:', err)
@@ -275,8 +321,15 @@ const handleChangeAvatar = () => {
         })
         if (uploadRes.code === 200) {
           const url = uploadRes.data.url
-          profile.value.avatar = url.startsWith('http') ? url : (request.config.baseUrl || '') + url
+          const avatarUrl = url.startsWith('http') ? url : (request.config.baseUrl || '') + url
+          profile.value.avatar = avatarUrl
           uni.setStorageSync('userInfo', profile.value)
+          // 持久化头像URL到后端数据库
+          try {
+            await request.put('/api/users/update', { avatar: avatarUrl })
+          } catch (e) {
+            console.error('保存头像到后端失败:', e)
+          }
           uni.showToast({ title: '头像更新成功', icon: 'success' })
         } else {
           uni.showToast({ title: uploadRes.msg || '上传失败', icon: 'none' })
@@ -312,6 +365,9 @@ const handleLogout = () => {
         uni.removeStorageSync('token')
         uni.removeStorageSync('userInfo')
         uni.removeStorageSync('adminToken')
+        // Clear Vuex store
+        store.commit('auth/SET_TOKEN', '')
+        store.commit('auth/SET_USER_INFO', null)
         profile.value = {}
         hasToken.value = false
         uni.reLaunch({ url: '/pages/auth/login' })
@@ -497,6 +553,29 @@ onShow(() => {
 }
 
 .arrow { font-size: 28rpx; color: #ccc; }
+
+// 年月选择器
+.month-picker {
+  margin-bottom: 24rpx;
+  .picker-row {
+    display: flex;
+    gap: 20rpx;
+    margin-bottom: 12rpx;
+  }
+  .picker-val {
+    font-size: 26rpx;
+    color: #667eea;
+    padding: 12rpx 24rpx;
+    background: #f0f0ff;
+    border-radius: 12rpx;
+    font-weight: 500;
+  }
+  .picker-total {
+    font-size: 26rpx;
+    color: #666;
+    .highlight { color: #667eea; font-weight: 700; font-size: 30rpx; }
+  }
+}
 
 // 看板
 .chart-loading, .chart-error {

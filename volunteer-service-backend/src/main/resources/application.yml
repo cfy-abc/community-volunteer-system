@@ -18,6 +18,12 @@ jwt:
   secret: your_jwt_secret_key_here
   expiration: 86400000 # 24小时
 
-# 文件上传配置
+# 文件上传配置（相对路径，位于项目运行目录下）
 file:
-  upload-path: /uploads/
+  upload-path: ./uploads/
+
+# 微信小程序/公众号配置
+wechat:
+  app-id: YOUR_WECHAT_APPID
+  app-secret: YOUR_WECHAT_APPSECRET
+  oauth2-redirect-uri: http://localhost:5173/pages/auth/login

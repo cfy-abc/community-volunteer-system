@@ -1,8 +1,8 @@
 <template>
   <view class="activity-detail-container" v-if="!loading">
     <view class="back-header">
-      <view class="back-btn" @tap="goBack"><text class="iconfont icon-back"></text></view>
-      <text class="title">活动详情</text>
+      <view class="back-btn" @tap="goBack"><text>&#8592;</text></view>
+      <text class="title">&#127917; 活动详情</text>
       <view class="right-space"></view>
     </view>
 
@@ -12,9 +12,9 @@
       <view class="cover-content">
         <text class="activity-title">{{ activity.title }}</text>
         <view class="activity-stats">
-          <text class="stat-item">{{ activity.appliedCount || 0 }}人报名</text>
-          <text class="stat-item">{{ activity.maxParticipants }}人上限</text>
-          <text class="stat-item">{{ activity.rewardHours }}小时</text>
+          <text class="stat-item">&#128101; {{ activity.appliedCount || 0 }}人报名</text>
+          <text class="stat-item">&#127919; {{ activity.maxParticipants }}人上限</text>
+          <text class="stat-item">&#9200; {{ activity.rewardHours }}h</text>
         </view>
       </view>
     </view>
@@ -26,23 +26,64 @@
         v-if="isActivityCreator" @tap="currentTab = 'applicants'; loadApplicants()">报名名单</view>
     </view>
 
-    <view class="activity-info" v-if="currentTab === 'detail'">
+    <view class="activity-info" v-show="currentTab === 'detail'">
       <view class="info-section">
-        <view class="info-item"><text class="label">活动时间</text><text class="value">{{ formatDate(activity.startTime) }} - {{ formatDate(activity.endTime) }}</text></view>
-        <view class="info-item"><text class="label">活动地点</text><text class="value">{{ activity.location }}</text></view>
-        <view class="info-item"><text class="label">联系电话</text><text class="value">{{ activity.contactPhone || '暂无' }}</text></view>
-        <view class="info-item"><text class="label">活动类型</text><text class="value">{{ activity.type || '公益活动' }}</text></view>
+        <view class="info-item">
+          <view class="info-icon-wrapper"><text class="info-icon">&#9200;</text></view>
+          <view class="info-body">
+            <text class="label">活动时间</text>
+            <text class="value">{{ formatDate(activity.startTime) }} - {{ formatDate(activity.endTime) }}</text>
+          </view>
+        </view>
+        <view class="info-item">
+          <view class="info-icon-wrapper"><text class="info-icon">&#128205;</text></view>
+          <view class="info-body">
+            <text class="label">活动地点</text>
+            <text class="value">{{ activity.location }}</text>
+          </view>
+        </view>
+        <view class="info-item">
+          <view class="info-icon-wrapper"><text class="info-icon">&#128222;</text></view>
+          <view class="info-body">
+            <text class="label">联系电话</text>
+            <text class="value">{{ activity.contactPhone || '暂无' }}</text>
+          </view>
+        </view>
+        <view class="info-item">
+          <view class="info-icon-wrapper"><text class="info-icon">&#127991;</text></view>
+          <view class="info-body">
+            <text class="label">活动类型</text>
+            <text class="value">{{ activity.type || '公益活动' }}</text>
+          </view>
+        </view>
         <view class="info-item" v-if="activity.tags && activity.tags.length">
-          <text class="label">活动标签</text>
-          <view class="tags"><text class="tag" v-for="tag in activity.tags" :key="tag">{{ tag }}</text></view>
+          <view class="info-icon-wrapper"><text class="info-icon">&#128278;</text></view>
+          <view class="info-body">
+            <text class="label">活动标签</text>
+            <view class="tags"><text class="tag" v-for="tag in activity.tags" :key="tag">{{ tag }}</text></view>
+          </view>
         </view>
       </view>
 
-      <view class="desc-section"><text class="section-title">活动介绍</text><text class="desc-content">{{ activity.description }}</text></view>
+      <view class="desc-section">
+        <view class="section-header">
+          <text class="section-icon">&#128221;</text>
+          <text class="section-title">活动介绍</text>
+        </view>
+        <text class="desc-content">{{ activity.description }}</text>
+      </view>
 
       <view class="conditions-section" v-if="activity.conditions && activity.conditions.length">
-        <text class="section-title">报名条件</text>
-        <view class="condition-list"><view class="condition-item" v-for="(cond, idx) in activity.conditions" :key="idx"><text class="condition-dot">•</text><text class="condition-text">{{ cond }}</text></view></view>
+        <view class="section-header">
+          <text class="section-icon">&#9989;</text>
+          <text class="section-title">报名条件</text>
+        </view>
+        <view class="condition-list">
+          <view class="condition-item" v-for="(cond, idx) in activity.conditions" :key="idx">
+            <view class="condition-num">{{ idx + 1 }}</view>
+            <text class="condition-text">{{ cond }}</text>
+          </view>
+        </view>
       </view>
 
       <!-- 留言板区域 -->
@@ -54,7 +95,7 @@
     </view>
 
     <!-- 报名名单Tab内容 -->
-    <view class="applicants-section" v-if="currentTab === 'applicants'">
+    <view class="applicants-section" v-show="currentTab === 'applicants'">
       <view class="export-bar">
         <button class="export-btn" @tap="exportApplicants">导出Excel</button>
       </view>
@@ -69,14 +110,18 @@
 
     <view class="bottom-action" v-if="isLoggedIn">
       <view class="action-btn favorite-btn" @tap="toggleFavorite">
-        <text class="iconfont" :class="{ 'icon-favorite-fill': isFavorite, 'icon-favorite': !isFavorite }"></text>
+        <text class="fav-icon">{{ isFavorite ? '&#10084;&#65039;' : '&#9825;' }}</text>
         <text class="btn-text">{{ isFavorite ? '已收藏' : '收藏' }}</text>
       </view>
-      <button class="apply-btn" :class="{ disabled: !canApply }" @tap="goToApply" :disabled="!canApply">{{ applyButtonText }}</button>
-      <button v-if="showSignBtn" class="sign-btn" @tap="goToSignPage">{{ signStatus === 'checked_in' ? '签退' : '签到' }}</button>
+      <button class="apply-btn" :class="{ disabled: !canApply }" @tap="goToApply" :disabled="!canApply">
+        <text class="apply-icon">&#9997;&#65039;</text>{{ applyButtonText }}
+      </button>
+      <button v-if="showSignBtn" class="sign-btn" @tap="goToSignPage">
+        <text class="sign-icon">{{ signStatus === 'checked_in' ? '&#128280;' : '&#128221;' }}</text>{{ signStatus === 'checked_in' ? '签退' : '签到' }}
+      </button>
     </view>
 
-    <view class="login-tip" v-else><text>请先登录后再报名</text><button class="login-btn" @tap="goToLogin">去登录</button></view>
+    <view class="login-tip" v-if="!isLoggedIn"><text>请先登录后再报名</text><button class="login-btn" @tap="goToLogin">去登录</button></view>
     <view class="loading-container" v-if="loading"><text class="loading-text">加载中...</text></view>
   </view>
 </template>
@@ -121,7 +166,7 @@ const showSignBtn = computed(() => isLoggedIn.value && isActivityOpen.value && h
 
 const loadActivity = async () => {
   try {
-    const res = await request.get(`/activities/${activityId.value}`)
+    const res = await request.get(`/api/activities/${activityId.value}`)
     if (res.code === 200) {
       activity.value = res.data
       // Parse conditions if it's a JSON string
@@ -139,7 +184,7 @@ const loadActivity = async () => {
 const loadSignStatus = async (retry = true) => {
   if (!isLoggedIn.value) return
   try {
-    const res = await request.get(`/activities/${activityId.value}/sign-status`)
+    const res = await request.get(`/api/activities/${activityId.value}/sign-status`)
     if (res.code === 200) signStatus.value = res.data.status
   } catch (err) {
     if (retry) {
@@ -158,7 +203,7 @@ const goToApply = () => {
 
 const loadApplicants = async () => {
   try {
-    const res = await request.get(`/activities/${activityId.value}/applicants`)
+    const res = await request.get(`/api/activities/${activityId.value}/applicants`)
     if (res.code === 200) applicants.value = res.data || []
   } catch (e) {}
 }
@@ -216,11 +261,12 @@ onLoad(async (options) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 30rpx;
+  padding: 20rpx 30rpx;
   background-color: #fff;
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
   .back-btn {
     width: 60rpx;
     height: 60rpx;
@@ -228,10 +274,13 @@ onLoad(async (options) => {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background-color: #f0f0f0;
+    background-color: #f5f5f5;
+    font-size: 36rpx;
+    color: #333;
+    font-weight: bold;
   }
   .title {
-    font-size: 36rpx;
+    font-size: 34rpx;
     font-weight: bold;
     color: #333;
   }
@@ -254,7 +303,7 @@ onLoad(async (options) => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(transparent, rgba(0,0,0,0.6));
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.65));
   }
   .cover-content {
     position: absolute;
@@ -267,87 +316,114 @@ onLoad(async (options) => {
       font-weight: bold;
       color: #fff;
       margin-bottom: 20rpx;
+      text-shadow: 0 2rpx 8rpx rgba(0,0,0,0.3);
     }
     .activity-stats {
       display: flex;
-      gap: 30rpx;
+      gap: 20rpx;
       .stat-item {
-        font-size: 26rpx;
-        color: rgba(255,255,255,0.9);
-        background: rgba(255,255,255,0.2);
-        padding: 6rpx 16rpx;
+        font-size: 24rpx;
+        color: rgba(255,255,255,0.95);
+        background: rgba(255,255,255,0.22);
+        padding: 6rpx 18rpx;
         border-radius: 20rpx;
+        backdrop-filter: blur(10rpx);
       }
     }
   }
 }
 
 .activity-info {
-  padding: 30rpx;
+  padding: 20rpx 30rpx;
   .info-section {
     background: #fff;
     border-radius: 20rpx;
-    padding: 30rpx;
+    padding: 10rpx 30rpx;
     margin-bottom: 20rpx;
+    box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.04);
     .info-item {
       display: flex;
-      flex-direction: column;
-      margin-bottom: 30rpx;
-      &:last-child { margin-bottom: 0; }
-      .label { font-size: 28rpx; color: #666; margin-bottom: 10rpx; font-weight: 500; }
-      .value { font-size: 30rpx; color: #333; }
+      align-items: flex-start;
+      padding: 24rpx 0;
+      border-bottom: 1rpx solid #f5f5f5;
+      &:last-child { border-bottom: none; }
+      .info-icon-wrapper {
+        width: 60rpx;
+        height: 60rpx;
+        border-radius: 16rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 20rpx;
+        flex-shrink: 0;
+        &:nth-child(odd) { background: #eef0ff; }
+      }
+      .info-icon { font-size: 32rpx; line-height: 1; }
+      .info-body { flex: 1; min-width: 0; }
+      .label { font-size: 24rpx; color: #999; margin-bottom: 6rpx; display: block; }
+      .value { font-size: 30rpx; color: #333; line-height: 1.4; word-break: break-all; }
       .tags {
         display: flex;
         flex-wrap: wrap;
         gap: 10rpx;
+        margin-top: 6rpx;
         .tag {
           font-size: 24rpx;
           color: #667eea;
-          background-color: #f0f0ff;
-          padding: 6rpx 16rpx;
-          border-radius: 16rpx;
+          background: linear-gradient(135deg, #f0f0ff, #e8ebff);
+          padding: 6rpx 18rpx;
+          border-radius: 20rpx;
         }
       }
     }
   }
-  .desc-section, .conditions-section, .feedback-section {
+  .desc-section, .conditions-section {
     background: #fff;
     border-radius: 20rpx;
     padding: 30rpx;
     margin-bottom: 20rpx;
-    .section-title {
-      display: block;
-      font-size: 32rpx;
-      font-weight: bold;
-      color: #333;
+    box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.04);
+    .section-header {
+      display: flex;
+      align-items: center;
       margin-bottom: 20rpx;
+      .section-icon { font-size: 36rpx; margin-right: 12rpx; }
+      .section-title {
+        font-size: 32rpx;
+        font-weight: bold;
+        color: #333;
+      }
     }
     .desc-content {
       font-size: 28rpx;
       color: #666;
-      line-height: 1.6;
+      line-height: 1.8;
+      text-align: justify;
     }
   }
   .condition-list {
     .condition-item {
       display: flex;
-      margin-bottom: 15rpx;
-      .condition-dot { font-size: 32rpx; color: #667eea; margin-right: 15rpx; }
-      .condition-text { font-size: 28rpx; color: #666; flex: 1; }
-    }
-  }
-  .feedback-list {
-    .feedback-item {
-      margin-bottom: 30rpx;
-      .feedback-user {
+      align-items: flex-start;
+      margin-bottom: 16rpx;
+      padding: 16rpx 20rpx;
+      background: #fafbff;
+      border-radius: 12rpx;
+      border-left: 6rpx solid #667eea;
+      .condition-num {
+        width: 40rpx;
+        height: 40rpx;
+        border-radius: 50%;
+        background: #667eea;
+        color: #fff;
+        font-size: 22rpx;
         display: flex;
         align-items: center;
-        margin-bottom: 15rpx;
-        .user-avatar { width: 50rpx; height: 50rpx; border-radius: 50%; margin-right: 15rpx; }
-        .user-name { font-size: 26rpx; color: #333; font-weight: 500; }
+        justify-content: center;
+        margin-right: 16rpx;
+        flex-shrink: 0;
       }
-      .feedback-content { font-size: 26rpx; color: #666; line-height: 1.5; margin-bottom: 10rpx; }
-      .feedback-time { font-size: 22rpx; color: #999; }
+      .condition-text { font-size: 28rpx; color: #555; flex: 1; line-height: 1.6; }
     }
   }
 }
@@ -359,9 +435,11 @@ onLoad(async (options) => {
   right: 0;
   display: flex;
   gap: 20rpx;
-  padding: 20rpx 30rpx;
+  padding: 16rpx 30rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background-color: #fff;
   border-top: 1rpx solid #f0f0f0;
+  box-shadow: 0 -4rpx 16rpx rgba(0,0,0,0.04);
   .action-btn {
     flex: 1;
     display: flex;
@@ -371,29 +449,38 @@ onLoad(async (options) => {
     border-radius: 12rpx;
     border: 1rpx solid #e0e0e0;
     background: #fff;
-    .iconfont { font-size: 36rpx; margin-right: 10rpx; color: #666; }
-    .icon-favorite-fill { color: #ff4757; }
-    .btn-text { font-size: 28rpx; color: #666; }
+    .fav-icon { font-size: 32rpx; margin-right: 6rpx; }
+    .btn-text { font-size: 26rpx; color: #666; }
   }
   .apply-btn {
     flex: 2;
     height: 80rpx;
-    background: #667eea;
+    background: linear-gradient(135deg, #667eea, #7b5ea7);
     color: #fff;
     border: none;
     border-radius: 40rpx;
-    font-size: 32rpx;
+    font-size: 30rpx;
     font-weight: 500;
-    &.disabled { background-color: #ccc; }
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8rpx;
+    .apply-icon { font-size: 28rpx; }
+    &.disabled { background: #ccc; }
   }
   .sign-btn {
     flex: 1;
     height: 80rpx;
-    background: #ff976a;
+    background: linear-gradient(135deg, #ff976a, #ff6b6b);
     color: #fff;
     border-radius: 40rpx;
-    font-size: 28rpx;
+    font-size: 26rpx;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6rpx;
+    .sign-icon { font-size: 26rpx; }
   }
 }
 
@@ -406,12 +493,17 @@ onLoad(async (options) => {
   padding: 30rpx;
   text-align: center;
   border-top: 1rpx solid #eee;
+  padding-bottom: calc(30rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -4rpx 16rpx rgba(0,0,0,0.04);
+  text { font-size: 28rpx; color: #666; }
   .login-btn {
     margin-top: 20rpx;
-    background: #667eea;
+    background: linear-gradient(135deg, #667eea, #7b5ea7);
     color: #fff;
     width: 60%;
     border-radius: 40rpx;
+    font-size: 30rpx;
+    border: none;
   }
 }
 
@@ -429,9 +521,36 @@ onLoad(async (options) => {
   .loading-text { font-size: 32rpx; color: #666; }
 }
 
-.tabs { display: flex; margin: 20rpx 30rpx; background: #fff; border-radius: 12rpx; overflow: hidden;
-  .tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 28rpx; color: #888;
-    &.active { color: #667eea; font-weight: bold; border-bottom: 4rpx solid #667eea; }
+.tabs {
+  display: flex;
+  margin: 20rpx 30rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 24rpx 0;
+    font-size: 28rpx;
+    color: #888;
+    position: relative;
+    transition: all 0.2s;
+    &.active {
+      color: #667eea;
+      font-weight: bold;
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 48rpx;
+        height: 4rpx;
+        background: #667eea;
+        border-radius: 2rpx;
+      }
+    }
   }
 }
 .applicants-section { padding: 0 30rpx;

@@ -16,4 +16,9 @@ public class User {
     private Integer status; // 0待审核，1通过，2拒绝
     private Date registerTime;
     private String avatar;
+    private String idCard;
+    private Integer realNameStatus; // 0未认证, 1已认证, 2认证中
+    private Integer isOrgUser; // 0否, 1是
+    private String orgPosition;
+    private String orgDepartment;
 }

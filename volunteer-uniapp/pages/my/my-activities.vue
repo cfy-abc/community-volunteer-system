@@ -95,7 +95,7 @@ const loadPublished = async () => {
     const info = await request.get('/api/users/info')
     if (info.code !== 200 || !info.data) return
     const userId = info.data.userId
-    const res = await request.get('/activities', { page: 1, size: 100 })
+    const res = await request.get('/api/activities', { page: 1, size: 100 })
     if (res.code === 200 && res.data) {
       // 只显示个人发布的活动（orgId === 0），组织活动在其他入口管理
       published.value = (res.data.list || []).filter(a => a.creatorId === userId && (a.orgId === 0 || a.orgId == null))

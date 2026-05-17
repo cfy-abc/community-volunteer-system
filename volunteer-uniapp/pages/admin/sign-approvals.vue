@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="top-bar">
-      <text class="back" @tap="goBack">← 返回</text>
+      <text class="back" @tap="goBack">←返回</text>
       <text class="title">签到审批</text>
       <text></text>
     </view>
@@ -21,8 +21,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { onMounted } from '@dcloudio/uni-app'
+import { ref,onMounted } from 'vue'
 import request from '@/utils/request'
 
 const records = ref([])
@@ -35,9 +34,16 @@ const loadData = async () => {
 }
 
 const approve = async (r) => {
+	// 添加 id 验证
+	  if (!r.id) {
+	    uni.showToast({ title: '记录ID无效', icon: 'none' })
+	    return
+	  }
   try {
     await request.post(`/admin/sign-records/${r.id}/approve`, {
-      userId: r.userId, activityId: r.activityId, hours: r.hoursEarned
+      userId: r.userId, 
+	  activityId: r.activityId, 
+	  hours: r.hoursEarned
     })
     uni.showToast({ title: '已通过', icon: 'success' })
     loadData()

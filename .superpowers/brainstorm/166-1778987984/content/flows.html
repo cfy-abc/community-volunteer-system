@@ -1,0 +1,115 @@
+<h1 style="margin-bottom: 0;">核心流程改造方案</h1>
+<p class="subtitle">4条关键流程的变化对比</p>
+
+<div class="section">
+  <h3>1. 报名流程（改后）</h3>
+  <div class="mockup">
+    <div class="mockup-header">detail.vue → apply.vue → 报名成功</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px;">
+        <div style="background:#e8f5e9;padding:12px 16px;border-radius:10px;text-align:center;">
+          <strong>detail.vue</strong><br/>点击"立即报名"<br/><span style="color:#f44336">不再弹窗</span>
+        </div>
+        <span style="font-size:20px;">→</span>
+        <div style="background:#fff3e0;padding:12px 16px;border-radius:10px;text-align:center;">
+          <strong>apply.vue</strong><br/>填写报名信息<br/>（姓名/手机/邮箱等）
+        </div>
+        <span style="font-size:20px;">→</span>
+        <div style="background:#e3f2fd;padding:12px 16px;border-radius:10px;text-align:center;">
+          <strong>POST /register</strong><br/>提交报名+表单数据<br/>后端保存报名信息
+        </div>
+        <span style="font-size:20px;">→</span>
+        <div style="background:#f3e5f5;padding:12px 16px;border-radius:10px;text-align:center;">
+          <strong>返回detail.vue</strong><br/>按钮变为"已报名"<br/>出现签到入口
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. 签到签退流程（改后）</h3>
+  <div class="mockup">
+    <div class="mockup-header">sign.vue — 统一页面，三种方式可选</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;background:#f5f5f5;padding:16px;border-radius:10px;text-align:center;">
+          <div style="font-size:28px;">📍</div>
+          <strong>GPS定位签到</strong>
+          <p style="font-size:12px;color:#888;margin:8px 0 0;">自动获取真实位置<br/>H5和小程序均支持</p>
+        </div>
+        <div style="flex:1;min-width:140px;background:#f5f5f5;padding:16px;border-radius:10px;text-align:center;">
+          <div style="font-size:28px;">📷</div>
+          <strong>扫码签到</strong>
+          <p style="font-size:12px;color:#888;margin:8px 0 0;">扫描活动二维码<br/>或组织者反扫码</p>
+        </div>
+        <div style="flex:1;min-width:140px;background:#f5f5f5;padding:16px;border-radius:10px;text-align:center;">
+          <div style="font-size:28px;">🤳</div>
+          <strong>拍照签到</strong>
+          <p style="font-size:12px;color:#888;margin:8px 0 0;">实时拍照+位置水印<br/>新增功能</p>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#667eea;margin-top:16px;text-align:center;">
+        活动发布时可指定允许的签到方式，用户按指定方式签到/签退
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>3. 审批流程（新增）</h3>
+  <div class="mockup">
+    <div class="mockup-header">48h自动审批 + 双端审批入口</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;border:2px solid #4caf50;padding:16px;border-radius:10px;">
+          <strong>🕐 48h自动审批</strong>
+          <p style="font-size:13px;color:#666;margin-top:8px;">
+            签退后启动定时任务<br/>
+            48h内发布方可手动拒绝<br/>
+            超时自动通过，时长生效
+          </p>
+        </div>
+        <div style="flex:1;min-width:180px;border:2px solid #ff9800;padding:16px;border-radius:10px;">
+          <strong>📋 发布方审批入口</strong>
+          <p style="font-size:13px;color:#666;margin-top:8px;">
+            "我的活动"→"发布的活动"<br/>
+            每个活动显示待审批数<br/>
+            点击进入审批列表
+          </p>
+        </div>
+        <div style="flex:1;min-width:180px;border:2px solid #2196f3;padding:16px;border-radius:10px;">
+          <strong>🛡️ 管理员审批入口</strong>
+          <p style="font-size:13px;color:#666;margin-top:8px;">
+            管理后台新增<br/>
+            "签到审批"Tab<br/>
+            可查看/审批所有记录
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>4. 数据看板改造</h3>
+  <div class="mockup">
+    <div class="mockup-header">动态折线图替代静态柱状图</div>
+    <div class="mockup-body">
+      <div style="padding:20px;background:#1a2736;border-radius:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <span style="color:#ccd6e0;font-weight:600;">📊 月度服务时长趋势</span>
+          <span style="color:#8899aa;font-size:12px;">2024-01 ~ 2025-05</span>
+        </div>
+        <div style="height:200px;background:linear-gradient(180deg,#1a2736,#0f1923);border-radius:8px;display:flex;align-items:flex-end;justify-content:space-around;padding:0 20px;">
+          <div style="text-align:center;"><div style="width:28px;background:linear-gradient(180deg,#667eea,#764ba2);height:60px;border-radius:4px 4px 0 0;"></div><span style="color:#667eea;font-size:10px;">1月</span></div>
+          <div style="text-align:center;"><div style="width:28px;background:linear-gradient(180deg,#667eea,#764ba2);height:90px;border-radius:4px 4px 0 0;"></div><span style="color:#667eea;font-size:10px;">2月</span></div>
+          <div style="text-align:center;"><div style="width:28px;background:linear-gradient(180deg,#667eea,#764ba2);height:120px;border-radius:4px 4px 0 0;"></div><span style="color:#667eea;font-size:10px;">3月</span></div>
+          <div style="text-align:center;"><div style="width:28px;background:linear-gradient(180deg,#667eea,#764ba2);height:80px;border-radius:4px 4px 0 0;"></div><span style="color:#667eea;font-size:10px;">4月</span></div>
+          <div style="text-align:center;"><div style="width:28px;background:linear-gradient(180deg,#667eea,#764ba2);height:140px;border-radius:4px 4px 0 0;"></div><span style="color:#667eea;font-size:10px;">5月</span></div>
+        </div>
+        <p style="text-align:center;color:#667eea;margin-top:12px;font-size:13px;">⬅ 滑动查看 ➡ | 点击数据点显示详情</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -315,6 +315,11 @@ public class ActivityController {
     public Result getActivitySignApprovals(@RequestHeader("Authorization") String token,
                                            @PathVariable Integer id) {
         try {
+            // 验证活动ID是否有效
+            if (id == null || id <= 0) {
+                return Result.error("无效的活动ID");
+            }
+            
             Integer userId = getUserIdFromToken(token);
             // Verify user is the activity creator
             Activity activity = activityService.getActivityDetail(id);

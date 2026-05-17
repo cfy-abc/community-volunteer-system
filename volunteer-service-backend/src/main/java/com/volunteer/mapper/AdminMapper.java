@@ -48,7 +48,10 @@ public interface AdminMapper {
     @Select("SELECT COUNT(*) FROM organization")
     int totalOrganizations();
 
-    @Select("SELECT COALESCE(SUM(sr.hours_earned), 0) FROM sign_record sr WHERE sr.approval_status = 1")
+    @Select("SELECT COALESCE(SUM(CASE WHEN sr.id IS NOT NULL AND sr.hours_earned > 0 THEN sr.hours_earned ELSE vr.hours_earned END), 0) " +
+            "FROM volunteer_record vr " +
+            "LEFT JOIN sign_record sr ON vr.user_id = sr.user_id AND vr.activity_id = sr.activity_id " +
+            "WHERE vr.status != 'cancelled'")
     int totalVolunteerHours();
 
     @Select("SELECT * FROM user ORDER BY volunteer_hours DESC LIMIT #{limit}")
@@ -59,8 +62,22 @@ public interface AdminMapper {
             "WHERE o.status = 1 GROUP BY o.org_id ORDER BY total DESC LIMIT #{limit}")
     List<java.util.Map<String, Object>> topOrganizations(@Param("limit") int limit);
 
-    @Select("SELECT a.type as name, COUNT(*) as value FROM activity a GROUP BY a.type ORDER BY value DESC")
+    @Select("SELECT a.`type` as name, " +
+            "COALESCE(SUM(CASE WHEN sr.id IS NOT NULL AND sr.hours_earned > 0 THEN sr.hours_earned ELSE vr.hours_earned END), 0) as value " +
+            "FROM volunteer_record vr " +
+            "JOIN activity a ON vr.activity_id = a.activity_id " +
+            "LEFT JOIN sign_record sr ON vr.user_id = sr.user_id AND vr.activity_id = sr.activity_id " +
+            "WHERE vr.status != 'cancelled' " +
+            "GROUP BY a.`type` ORDER BY value DESC")
     List<java.util.Map<String, Object>> activityTypeDistribution();
+
+    @Select("SELECT DATE_FORMAT(COALESCE(sr.checkout_time, vr.register_time), '%Y-%m') as month, " +
+            "COALESCE(SUM(CASE WHEN sr.id IS NOT NULL AND sr.hours_earned > 0 THEN sr.hours_earned ELSE 0 END), 0) as hours " +
+            "FROM volunteer_record vr " +
+            "LEFT JOIN sign_record sr ON vr.user_id = sr.user_id AND vr.activity_id = sr.activity_id " +
+            "WHERE vr.status != 'cancelled' " +
+            "GROUP BY DATE_FORMAT(COALESCE(sr.checkout_time, vr.register_time), '%Y-%m') ORDER BY month ASC")
+    List<java.util.Map<String, Object>> monthlyVolunteerHours();
 
     @Select("<script>" +
             "SELECT sr.id, sr.user_id AS userId, sr.activity_id AS activityId, " +
@@ -80,4 +97,14 @@ public interface AdminMapper {
 
     @Update("UPDATE sign_record SET approval_status = 2, approval_time = NOW() WHERE id = #{id}")
     int rejectSignRecord(@Param("id") Integer id);
+
+    // Load raw stats data for dashboard — one query, compute in Java for consistency
+    @Select("SELECT vr.user_id AS userId, vr.hours_earned AS vrHours, " +
+            "sr.id AS srId, sr.hours_earned AS srHours, sr.checkin_time AS checkinTime, sr.checkout_time AS checkoutTime, " +
+            "a.type AS activityType " +
+            "FROM volunteer_record vr " +
+            "JOIN activity a ON vr.activity_id = a.activity_id " +
+            "LEFT JOIN sign_record sr ON vr.user_id = sr.user_id AND vr.activity_id = sr.activity_id " +
+            "WHERE vr.status != 'cancelled'")
+    List<Map<String, Object>> getDashboardStatsRaw();
 }

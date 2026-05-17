@@ -17,4 +17,9 @@ public class UserDTO {
     private Integer totalSpentHours;
     private Integer status;
     private String avatar;
+    private String idCard;
+    private Integer realNameStatus;
+    private Integer isOrgUser;
+    private String orgPosition;
+    private String orgDepartment;
 }

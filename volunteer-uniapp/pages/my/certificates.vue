@@ -75,12 +75,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import request from '@/utils/request'
 
-// 数据
 const certificates = ref([])
 const currentCategory = ref('all')
 
-// 分类配置
 const categories = [
   { key: 'all', name: '全部', icon: 'icon-all' },
   { key: 'volunteer', name: '志愿证书', icon: 'icon-volunteer' },
@@ -88,65 +87,30 @@ const categories = [
   { key: 'achievement', name: '成就证书', icon: 'icon-achievement' }
 ]
 
-// 模拟证书数据
-const mockCertificates = [
-  {
-    id: 1,
-    type: '志愿证书',
-    title: '社区环保清洁活动证书',
-    description: '参与社区环保清洁活动，为环境保护做出贡献',
-    issueDate: '2024-01-15',
-    issuer: '市环保局',
-    duration: 3,
-    status: 'valid',
-    category: 'volunteer'
-  },
-  {
-    id: 2,
-    type: '培训证书',
-    title: '志愿服务基础培训证书',
-    description: '完成志愿服务基础培训课程',
-    issueDate: '2024-01-10',
-    issuer: '市志愿者协会',
-    duration: 8,
-    status: 'valid',
-    category: 'training'
-  },
-  {
-    id: 3,
-    type: '志愿证书',
-    title: '敬老院慰问活动证书',
-    description: '参与敬老院慰问活动，为老年人送去关爱',
-    issueDate: '2024-01-16',
-    issuer: '市老龄办',
-    duration: 2,
-    status: 'valid',
-    category: 'volunteer'
-  },
-  {
-    id: 4,
-    type: '成就证书',
-    title: '优秀志愿者证书',
-    description: '表彰年度优秀志愿者',
-    issueDate: '2023-12-31',
-    issuer: '市志愿者协会',
-    duration: 0,
-    status: 'valid',
-    category: 'achievement'
-  }
-]
-
-// 计算属性
 const filteredCertificates = computed(() => {
-  if (currentCategory.value === 'all') {
-    return certificates.value
-  }
+  if (currentCategory.value === 'all') return certificates.value
   return certificates.value.filter(cert => cert.category === currentCategory.value)
 })
 
-// 方法
 const loadData = async () => {
-  certificates.value = [...mockCertificates]
+  try {
+    const res = await request.get('/api/users/applications', { status: 'completed', page: 1, size: 20 })
+    if (res.code === 200 && res.data) {
+      certificates.value = (res.data.list || []).map(item => ({
+        id: item.recordId,
+        type: '志愿证书',
+        title: (item.activityTitle || '活动') + '证书',
+        description: '完成志愿服务',
+        issueDate: item.checkOutTime || item.registerTime || '',
+        issuer: '社区志愿服务管理系统',
+        duration: item.hoursEarned || 0,
+        status: 'valid',
+        category: 'volunteer'
+      }))
+    }
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 const selectCategory = (category) => {
@@ -184,9 +148,7 @@ const formatDate = (dateString) => {
 }
 
 const viewCertificate = (id) => {
-  uni.navigateTo({
-    url: `/pages/my/certificate-detail?id=${id}`
-  })
+  uni.showToast({ title: '证书详情功能开发中', icon: 'none' })
 }
 
 const previewCertificate = (id) => {

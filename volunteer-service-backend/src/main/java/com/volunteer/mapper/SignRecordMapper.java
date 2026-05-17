@@ -24,9 +24,6 @@ public interface SignRecordMapper {
             "status = 2, hours_earned = #{hoursEarned}, approval_status = 0 WHERE id = #{id}")
     int updateCheckout(SignRecord record);
 
-    @Update("UPDATE sign_record SET status = 2, checkout_time = NOW(), checkout_location = #{location} WHERE id = #{id}")
-    int checkout(@Param("id") Integer id, @Param("location") String location);
-
     @Select("SELECT * FROM sign_record WHERE status = 2 AND approval_status = 0 " +
             "AND checkout_time IS NOT NULL AND checkout_time <= DATE_SUB(NOW(), INTERVAL 48 HOUR)")
     List<SignRecord> findPendingApprovals();
@@ -41,7 +38,7 @@ public interface SignRecordMapper {
             "u.real_name AS realName " +
             "FROM sign_record sr " +
             "JOIN user u ON sr.user_id = u.user_id " +
-            "WHERE sr.activity_id = #{activityId} AND sr.status = 2 " +
+            "WHERE sr.activity_id = #{activityId} AND sr.status = 2 AND sr.approval_status = 0 " +
             "ORDER BY sr.checkout_time DESC")
     List<Map<String, Object>> findPendingByActivity(@Param("activityId") Integer activityId);
 

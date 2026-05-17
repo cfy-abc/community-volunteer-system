@@ -147,20 +147,20 @@
     "list": [
       {
         "pagePath": "pages/home/home",
-        "iconPath": "static/images/home.png",
-        "selectedIconPath": "static/images/home-active.png",
+        "iconPath": "static/images/home.svg",
+        "selectedIconPath": "static/images/home-active.svg",
         "text": "首页"
       },
       {
         "pagePath": "pages/activities/list",
-        "iconPath": "static/images/activity.png",
-        "selectedIconPath": "static/images/activity-active.png",
+        "iconPath": "static/images/activity.svg",
+        "selectedIconPath": "static/images/activity-active.svg",
         "text": "活动"
       },
       {
         "pagePath": "pages/profile/profile",
-        "iconPath": "static/images/my.png",
-        "selectedIconPath": "static/images/my-active.png",
+        "iconPath": "static/images/my.svg",
+        "selectedIconPath": "static/images/my-active.svg",
         "text": "我的"
       }
     ]

@@ -20,12 +20,6 @@ public interface VolunteerRecordMapper {
     @Select("SELECT * FROM volunteer_record WHERE user_id = #{userId} AND activity_id = #{activityId}")
     VolunteerRecord findByUserAndActivity(@Param("userId") Integer userId, @Param("activityId") Integer activityId);
 
-    @Update("UPDATE volunteer_record SET status = #{status}, check_in_time = NOW(), check_in_location = #{location}, check_in_photo = #{photo} WHERE record_id = #{recordId}")
-    int checkIn(@Param("recordId") Integer recordId, @Param("status") String status, @Param("location") String location, @Param("photo") String photo);
-
-    @Update("UPDATE volunteer_record SET status = 'completed', check_out_time = NOW(), hours_earned = #{hoursEarned} WHERE record_id = #{recordId}")
-    int complete(@Param("recordId") Integer recordId, @Param("hoursEarned") Integer hoursEarned);
-
     @Select("<script>" +
             "SELECT r.record_id AS recordId, r.user_id AS userId, r.activity_id AS activityId, " +
             "r.hours_earned AS hoursEarned, r.status AS status, r.register_time AS registerTime, " +

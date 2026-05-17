@@ -144,7 +144,7 @@ const loadData = async () => {
   try {
     const params = { page: page.value, size: pageSize }
     if (searchKeyword.value) params.keyword = searchKeyword.value
-    const res = await request.get('/activities', params)
+    const res = await request.get('/api/activities', params)
     if (res.code === 200 && res.data) {
       activities.value = (res.data.list || []).map(mapActivity)
       hasMore.value = activities.value.length < res.data.total
@@ -250,7 +250,7 @@ const loadMore = async () => {
   loadingMore.value = true
   page.value++
   try {
-    const res = await request.get('/activities', { page: page.value, size: pageSize })
+    const res = await request.get('/api/activities', { page: page.value, size: pageSize })
     if (res.code === 200 && res.data) {
       const newItems = (res.data.list || []).map(mapActivity)
       activities.value = [...activities.value, ...newItems]

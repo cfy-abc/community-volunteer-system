@@ -25,19 +25,23 @@
         <view class="act" @tap="go('sign-approvals')"><text>✅</text><text>签到审批</text></view>
       </view>
 
-      <!-- 可视化大屏 -->
+      <!-- 月度服务时长趋势（折线图） -->
       <view class="chart-card">
-        <text class="sec-title">活动类型分布</text>
-        <view v-if="d.activityTypeDistribution && d.activityTypeDistribution.length > 0">
-          <view class="bar-row" v-for="(t, i) in typeDist" :key="i">
-            <text class="bar-name">{{ t.name }}</text>
-            <view class="bar-track">
-              <view class="bar-fill" :style="{ width: barW(t.value), background: colors[i%8] }"></view>
-            </view>
-            <text class="bar-val">{{ t.value }}</text>
-          </view>
+        <view class="picker-row">
+          <picker mode="selector" :range="yearOptions" :value="adminYearIdx" @change="onAdminYearChange">
+            <view class="picker-val">{{ adminYear }}年 &#9660;</view>
+          </picker>
+          <picker mode="selector" :range="monthOptions" :value="adminMonthIdx" @change="onAdminMonthChange">
+            <view class="picker-val">{{ adminMonth ? adminMonth + '月' : '全部月份' }} &#9660;</view>
+          </picker>
+          <text class="picker-sum" v-if="adminFilteredHours > 0">合计 {{ adminFilteredHours }}h</text>
         </view>
-        <text v-else class="no-data">暂无活动类型数据</text>
+        <service-chart type="line" title="月度服务时长趋势" :data="adminFilteredMonthly" />
+      </view>
+
+      <!-- 活动类型分布（柱状图） -->
+      <view class="chart-card">
+        <service-chart type="bar" title="活动类型分布 (h)" :data="typeData" />
       </view>
 
       <!-- 志愿者排行 -->
@@ -57,16 +61,45 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import request from '@/utils/request'
+import ServiceChart from '@/components/charts/service-chart.vue'
 
-const d = ref({ totalUsers:0, totalActivities:0, totalOrganizations:0, totalVolunteerHours:0, topVolunteers:[], topOrganizations:[], activityTypeDistribution:[] })
+const d = ref({ totalUsers:0, totalActivities:0, totalOrganizations:0, totalVolunteerHours:0, topVolunteers:[], topOrganizations:[], activityTypeDistribution:[], monthlyVolunteerHours:[] })
 const loading = ref(true)
 const loadErr = ref('')
-const colors = ['#667eea','#4caf50','#ff9800','#f44336','#2196f3','#9c27b0','#00bcd4','#ff5722']
 
 const topList = computed(() => d.value.topVolunteers || [])
-const typeDist = computed(() => d.value.activityTypeDistribution || [])
-const maxType = computed(() => Math.max(...typeDist.value.map(t => t.value || 0), 1))
-const barW = (v) => (v / maxType.value * 100) + '%'
+const typeData = computed(() => (d.value.activityTypeDistribution || []).map(t => ({ name: t.name, value: t.value })))
+
+// 年月选择器
+const years = [2025, 2026, 2027, 2028]
+const adminYear = ref(new Date().getFullYear())
+const adminMonth = ref(0)
+const adminYearIdx = ref(1)
+const adminMonthIdx = ref(0)
+const yearOptions = computed(() => years.map(y => y + '年'))
+const monthOptions = computed(() => ['全部月份', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'])
+
+const rawMonthly = computed(() => d.value.monthlyVolunteerHours || [])
+
+const adminFilteredMonthly = computed(() => {
+  if (!rawMonthly.value.length) return []
+  if (adminMonth.value === 0) return rawMonthly.value
+  const target = `${adminYear.value}-${String(adminMonth.value).padStart(2, '0')}`
+  return rawMonthly.value.filter(s => s.month && s.month.startsWith(target))
+})
+
+const adminFilteredHours = computed(() => {
+  return adminFilteredMonthly.value.reduce((sum, s) => sum + (parseFloat(s.hours) || 0), 0)
+})
+
+const onAdminYearChange = (e) => {
+  adminYearIdx.value = e.detail.value
+  adminYear.value = years[e.detail.value]
+}
+const onAdminMonthChange = (e) => {
+  adminMonthIdx.value = e.detail.value
+  adminMonth.value = e.detail.value
+}
 
 const loadAll = async () => {
   loading.value = true
@@ -116,12 +149,26 @@ onMounted(() => loadAll())
   text:first-child { display: block; font-size: 40rpx; margin-bottom: 6rpx; }
 }
 .chart-card { background: #1a2736; border-radius: 14rpx; margin: 0 20rpx 16rpx; padding: 24rpx; }
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  .picker-val {
+    font-size: 24rpx;
+    color: #667eea;
+    padding: 8rpx 20rpx;
+    background: #253544;
+    border-radius: 10rpx;
+  }
+  .picker-sum {
+    margin-left: auto;
+    font-size: 24rpx;
+    color: #00bcd4;
+    font-weight: 600;
+  }
+}
 .sec-title { font-size: 28rpx; font-weight: 600; color: #ccd6e0; display: block; margin-bottom: 20rpx; }
-.bar-row { display: flex; align-items: center; margin-bottom: 14rpx; }
-.bar-name { width: 120rpx; font-size: 22rpx; color: #8899aa; flex-shrink: 0; }
-.bar-track { flex: 1; height: 24rpx; background: #0f1923; border-radius: 12rpx; overflow: hidden; margin: 0 12rpx; }
-.bar-fill { height: 100%; border-radius: 12rpx; transition: width 0.6s; }
-.bar-val { width: 60rpx; font-size: 22rpx; color: #ccd6e0; text-align: right; flex-shrink: 0; }
 .rank { display: flex; align-items: center; padding: 12rpx 0; border-bottom: 1rpx solid #253544;
   .rk { width: 44rpx; height: 44rpx; border-radius: 50%; background: #253544; color: #8899aa; font-size: 22rpx; display: flex; align-items: center; justify-content: center; margin-right: 16rpx;
     &.top { background: #667eea; color: #fff; }

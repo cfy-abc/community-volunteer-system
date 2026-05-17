@@ -270,7 +270,7 @@ const publish = async () => {
 
   submitting.value = true
   try {
-    const res = await request.post('/activities', {
+    const res = await request.post('/api/activities', {
       title: t, description: d,
       location: location.value.trim(), longitude: longitude.value, latitude: latitude.value,
       startTime: startFull.value, endTime: endFull.value,

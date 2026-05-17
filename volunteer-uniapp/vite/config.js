@@ -92,9 +92,16 @@ export default defineConfig(({ command, mode }) => {
       open: true,
       proxy: {
         '/api': {
-          target: 'http://localhost:8080', // 后端服务地址
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          target: 'http://localhost:8080',
+          changeOrigin: true
+        },
+        '/admin': {
+          target: 'http://localhost:8080',
+          changeOrigin: true
+        },
+        '/uploads': {
+          target: 'http://localhost:8080',
+          changeOrigin: true
         }
       }
     },

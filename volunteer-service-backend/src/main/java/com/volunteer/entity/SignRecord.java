@@ -17,4 +17,7 @@ public class SignRecord {
     private String qrToken;
     private Date createTime;
     private Date updateTime;
+    private Integer approvalStatus; // 0待审批, 1已通过, 2已拒绝
+    private Date approvalTime;
+    private Double hoursEarned; // 实际服务时长
 }

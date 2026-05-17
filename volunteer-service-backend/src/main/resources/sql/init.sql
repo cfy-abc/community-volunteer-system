@@ -1,4 +1,8 @@
--- 创建数据库
+-- ============================================
+-- 志愿者管理系统 - 数据库初始化脚本
+-- 包含所有建表语句（不含种子数据）
+-- ============================================
+
 CREATE DATABASE IF NOT EXISTS volunteer_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE volunteer_db;
 
@@ -16,7 +20,12 @@ CREATE TABLE IF NOT EXISTS `user` (
     `total_spent_hours` INT DEFAULT 0 COMMENT '累计支出时长',
     `status` TINYINT DEFAULT 0 COMMENT '审核状态: 0待审核, 1通过, 2拒绝',
     `register_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
-    `avatar` VARCHAR(255) DEFAULT '/default_avatar.png' COMMENT '头像URL'
+    `avatar` VARCHAR(255) DEFAULT '/default_avatar.png' COMMENT '头像URL',
+    `id_card` VARCHAR(18) DEFAULT NULL COMMENT '身份证号',
+    `real_name_status` TINYINT DEFAULT 0 COMMENT '实名状态: 0未认证, 1已认证, 2认证中',
+    `is_org_user` TINYINT DEFAULT 0 COMMENT '是否组织用户: 0否, 1是',
+    `org_position` VARCHAR(100) DEFAULT NULL COMMENT '组织内职务',
+    `org_department` VARCHAR(100) DEFAULT NULL COMMENT '所属社区/部门'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- ============================================
@@ -91,6 +100,7 @@ CREATE TABLE IF NOT EXISTS `activity` (
     `tags` TEXT COMMENT '标签列表(JSON数组)',
     `conditions` TEXT COMMENT '报名条件(JSON数组)',
     `feedbacks` TEXT COMMENT '志愿者反馈(JSON数组)',
+    `sign_method` VARCHAR(50) DEFAULT 'gps,scan,photo' COMMENT '签到方式,逗号分隔: gps,scan,photo',
     FOREIGN KEY (`creator_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动表';
 
@@ -108,24 +118,15 @@ CREATE TABLE IF NOT EXISTS `volunteer_record` (
     `check_out_time` DATETIME COMMENT '签退时间',
     `check_in_location` VARCHAR(255) COMMENT '签到位置',
     `check_in_photo` VARCHAR(255) COMMENT '签到照片',
+    `applicant_name` VARCHAR(50) DEFAULT NULL COMMENT '报名者姓名',
+    `applicant_phone` VARCHAR(20) DEFAULT NULL COMMENT '报名者电话',
+    `applicant_email` VARCHAR(100) DEFAULT NULL COMMENT '报名者邮箱',
+    `emergency_contact` VARCHAR(50) DEFAULT NULL COMMENT '紧急联系人',
+    `emergency_phone` VARCHAR(20) DEFAULT NULL COMMENT '紧急联系电话',
+    `remarks` TEXT DEFAULT NULL COMMENT '备注信息',
     FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
     FOREIGN KEY (`activity_id`) REFERENCES `activity`(`activity_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='志愿记录表';
-
--- ============================================
--- 时长转账表
--- ============================================
-CREATE TABLE IF NOT EXISTS `hour_transfer` (
-    `transfer_id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '转账ID',
-    `from_user_id` INT NOT NULL COMMENT '转出用户ID',
-    `to_user_id` INT NOT NULL COMMENT '转入用户ID',
-    `hours` INT NOT NULL COMMENT '转账时长',
-    `reason` VARCHAR(255) COMMENT '转账原因',
-    `transfer_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '转账时间',
-    `status` TINYINT DEFAULT 0 COMMENT '状态: 0待处理, 1已同意, 2已拒绝',
-    FOREIGN KEY (`from_user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
-    FOREIGN KEY (`to_user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='时长转账表';
 
 -- ============================================
 -- 签到记录表
@@ -143,66 +144,60 @@ CREATE TABLE IF NOT EXISTS `sign_record` (
     `qr_token` VARCHAR(64) DEFAULT NULL COMMENT '签到二维码凭证',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `approval_status` TINYINT DEFAULT 0 COMMENT '0待审批, 1已通过, 2已拒绝',
+    `approval_time` DATETIME DEFAULT NULL COMMENT '审批时间',
+    `hours_earned` DECIMAL(5,1) DEFAULT 0 COMMENT '实际服务时长(小时)',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_activity` (`user_id`, `activity_id`),
-    KEY `idx_activity` (`activity_id`)
+    KEY `idx_activity` (`activity_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
+    FOREIGN KEY (`activity_id`) REFERENCES `activity`(`activity_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='签到记录表';
 
 -- ============================================
--- 种子数据
+-- 活动留言板表
 -- ============================================
+CREATE TABLE IF NOT EXISTS `activity_comment` (
+    `comment_id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '评论ID',
+    `activity_id` INT NOT NULL COMMENT '活动ID',
+    `user_id` INT NOT NULL COMMENT '用户ID',
+    `parent_id` INT DEFAULT NULL COMMENT '父评论ID(NULL=顶级评论)',
+    `content` TEXT NOT NULL COMMENT '评论内容',
+    `user_tag` VARCHAR(20) NOT NULL COMMENT '用户标签: organizer/participated/unparticipated',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    FOREIGN KEY (`activity_id`) REFERENCES `activity`(`activity_id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
+    FOREIGN KEY (`parent_id`) REFERENCES `activity_comment`(`comment_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动留言板';
 
--- 系统管理员 (密码: admin123)
-INSERT INTO `admin` (`username`, `password`, `real_name`, `phone`, `role`, `status`)
-VALUES ('admin', '$2a$10$E8b8dhBpb2iLmLzo1uCaf.R1BTpr7YpV2MKY3j37yPfeMG3vvp3GW', '系统管理员', '13800138000', 0, 1);
+-- ============================================
+-- 时长转账表
+-- ============================================
+CREATE TABLE IF NOT EXISTS `hour_transfer` (
+    `transfer_id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '转账ID',
+    `from_user_id` INT NOT NULL COMMENT '转出用户ID',
+    `to_user_id` INT NOT NULL COMMENT '转入用户ID',
+    `hours` INT NOT NULL COMMENT '转账时长',
+    `reason` VARCHAR(255) COMMENT '转账原因',
+    `transfer_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '转账时间',
+    `status` TINYINT DEFAULT 0 COMMENT '状态: 0待处理, 1已同意, 2已拒绝',
+    FOREIGN KEY (`from_user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
+    FOREIGN KEY (`to_user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='时长转账表';
 
--- 测试用户 (密码: 123456)
-INSERT INTO `user` (`username`, `password`, `real_name`, `phone`, `volunteer_hours`, `total_earned_hours`, `total_spent_hours`, `status`, `avatar`) VALUES
-('zhangsan', '$2a$10$1qfwBFFrvZmlhbR6HbC4S.cdDctPIHeF/6Vrjj/mOCRHSMZByKtfS', '张三', '13800000001', 35, 80, 45, 1, '/default_avatar.png'),
-('lisi',     '$2a$10$1qfwBFFrvZmlhbR6HbC4S.cdDctPIHeF/6Vrjj/mOCRHSMZByKtfS', '李四', '13800000002', 20, 60, 40, 1, '/default_avatar.png'),
-('wangwu',   '$2a$10$1qfwBFFrvZmlhbR6HbC4S.cdDctPIHeF/6Vrjj/mOCRHSMZByKtfS', '王五', '13800000003', 50, 120, 70, 1, '/default_avatar.png'),
-('zhaoliu',  '$2a$10$1qfwBFFrvZmlhbR6HbC4S.cdDctPIHeF/6Vrjj/mOCRHSMZByKtfS', '赵六', '13800000004', 15, 40, 25, 1, '/default_avatar.png'),
-('sunqi',    '$2a$10$1qfwBFFrvZmlhbR6HbC4S.cdDctPIHeF/6Vrjj/mOCRHSMZByKtfS', '孙七', '13800000005', 5, 20, 15, 1, '/default_avatar.png'),
-('zhouba',   '$2a$10$1qfwBFFrvZmlhbR6HbC4S.cdDctPIHeF/6Vrjj/mOCRHSMZByKtfS', '周八', '13800000006', 0, 10, 10, 0, '/default_avatar.png');
-
--- 测试组织
-INSERT INTO `organization` (`org_name`, `description`, `contact_phone`, `contact_email`, `creator_id`, `status`, `logo`) VALUES
-('爱心志愿者协会', '致力于社区服务的志愿者组织，定期开展敬老、环保、助学等公益活动', '13800000001', 'love@example.com', 1, 1, '/default_org_logo.png'),
-('环保先锋队', '专注环境保护的志愿团队，倡导绿色生活理念', '13800000002', 'green@example.com', 2, 1, '/default_org_logo.png'),
-('阳光助学社', '帮扶困难学生，组织课外辅导和兴趣培养活动', '13800000003', 'edu@example.com', 3, 1, '/default_org_logo.png'),
-('社区医疗服务队', '为社区居民提供基础医疗咨询和健康讲座服务', '13800000004', 'health@example.com', 4, 0, '/default_org_logo.png');
-
--- 组织成员
-INSERT INTO `group_member` (`org_id`, `user_id`, `role`) VALUES
-(1, 1, 2), (1, 2, 1), (1, 3, 0),
-(2, 2, 2), (2, 4, 1), (2, 5, 0),
-(3, 3, 2), (3, 1, 0), (3, 5, 0);
-
--- 测试活动 (各种状态和类型)
-INSERT INTO `activity` (`title`, `description`, `start_time`, `end_time`, `location`, `longitude`, `latitude`, `max_participants`, `current_participants`, `reward_hours`, `creator_id`, `org_id`, `status`, `poster`, `contact_phone`, `type`, `tags`, `conditions`) VALUES
-('社区环保清洁活动', '参与社区环境清洁，维护美好家园。需要志愿者协助清理街道垃圾、分类回收物品、美化公共区域。', '2026-05-10 09:00:00', '2026-05-10 17:00:00', '市中心公园南门', 116.407400, 39.904200, 50, 23, 3, 1, 1, 1, '/default_activity_poster.jpg', '13800000001', '环保公益', '["环保","社区","户外"]', '["年满16周岁","身体健康"]'),
-('敬老院慰问活动', '陪伴老人聊天，帮助老人整理房间，表演文艺节目，为他们带去温暖和关怀。', '2026-05-15 14:00:00', '2026-05-15 18:00:00', '阳光敬老院', 116.397400, 39.914200, 30, 18, 4, 1, 0, 1, '/default_activity_poster.jpg', '13800000001', '敬老助残', '["敬老","关爱","社会"]', '["有耐心和爱心","会表演节目者优先"]'),
-('儿童图书馆助教活动', '协助图书馆工作人员管理儿童阅读区域，组织读书会、讲故事等活动，培养孩子们的阅读兴趣。', '2026-05-17 10:00:00', '2026-05-17 16:00:00', '市图书馆少儿区', 116.417400, 39.924200, 20, 20, 3, 2, 2, 2, '/default_activity_poster.jpg', '13800000002', '教育助学', '["教育","儿童","阅读"]', '["年满18周岁","有教育经验者优先"]'),
-('医院导诊志愿服务', '为患者提供导诊服务，协助就医流程，帮助老年人使用自助设备，缓解医院门诊压力。', '2026-05-18 08:00:00', '2026-05-18 17:00:00', '市人民医院门诊大厅', 116.427400, 39.934200, 15, 8, 5, 3, 0, 1, '/default_activity_poster.jpg', '13800000003', '医疗健康', '["医疗","服务","导诊"]', '["有基本医疗常识","服务意识强"]'),
-('文化广场文艺演出', '参与社区文艺演出活动，丰富居民文化生活。招募节目表演者、场务志愿者、观众引导员。', '2026-05-19 18:00:00', '2026-05-19 21:00:00', '文化广场主舞台', 116.437400, 39.944200, 40, 12, 4, 1, 1, 1, '/default_activity_poster.jpg', '13800000001', '文化文艺', '["文化","演出","娱乐"]', '["有才艺者优先","守时有责任心"]'),
-('春季植树造林活动', '在森林公园开展春季植树活动，种植树苗、浇水施肥，为城市增添绿色。', '2026-05-20 08:00:00', '2026-05-20 16:00:00', '森林公园北门', 116.447400, 39.954200, 100, 56, 5, 2, 2, 1, '/default_activity_poster.jpg', '13800000002', '环保公益', '["环保","植树","户外"]', '["自带工具者优先","体力充沛"]'),
-('社区安全巡逻', '配合社区警务室进行安全巡逻，排查安全隐患，宣传防火防盗知识。', '2026-05-22 19:00:00', '2026-05-22 22:00:00', '阳光社区居委会', 116.457400, 39.964200, 20, 5, 2, 5, 0, 1, '/default_activity_poster.jpg', '13800000005', '社区服务', '["安全","巡逻","社区"]', '["年满18周岁","责任心强"]');
-
--- 志愿记录
-INSERT INTO `volunteer_record` (`user_id`, `activity_id`, `hours_earned`, `status`, `register_time`) VALUES
-(1, 1, 3, 'registered', NOW()),
-(2, 1, 3, 'registered', NOW()),
-(3, 1, 3, 'registered', NOW()),
-(4, 2, 4, 'registered', NOW()),
-(5, 2, 4, 'registered', NOW()),
-(1, 3, 3, 'registered', NOW()),
-(2, 3, 3, 'registered', NOW()),
-(3, 4, 5, 'registered', NOW()),
-(4, 5, 4, 'registered', NOW()),
-(5, 6, 5, 'registered', NOW());
-
--- 时长转账记录
-INSERT INTO `hour_transfer` (`from_user_id`, `to_user_id`, `hours`, `reason`, `status`) VALUES
-(1, 2, 5, '感谢帮忙搬家', 1),
-(2, 3, 3, '志愿活动协作奖励', 0),
-(3, 5, 8, '感谢协助敬老院活动', 1);
+-- ============================================
+-- 组织用户升级申请表
+-- ============================================
+CREATE TABLE IF NOT EXISTS `org_upgrade_application` (
+    `application_id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '申请ID',
+    `user_id` INT NOT NULL COMMENT '用户ID',
+    `org_id` INT DEFAULT NULL COMMENT '所属组织ID',
+    `position` VARCHAR(100) NOT NULL COMMENT '职位',
+    `department` VARCHAR(100) NOT NULL COMMENT '所属社区/部门',
+    `reason` TEXT COMMENT '申请理由',
+    `status` TINYINT DEFAULT 0 COMMENT '状态: 0待审核, 1通过, 2拒绝',
+    `apply_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+    `audit_time` DATETIME DEFAULT NULL COMMENT '审核时间',
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organization`(`org_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='组织用户升级申请表';

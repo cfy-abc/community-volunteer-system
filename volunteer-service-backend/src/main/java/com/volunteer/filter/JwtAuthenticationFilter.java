@@ -37,12 +37,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 1.1 跳过公开的 GET 请求（活动列表、组织列表等）
+        // 1.1 跳过公开的 GET 请求(活动列表、组织列表等)
         String method = request.getMethod();
         if ("GET".equals(method)) {
-            if (path.equals("/activities") || path.equals("/api/activities")
-                    || path.startsWith("/activities/") || path.startsWith("/api/activities/")
-                    || path.startsWith("/organizations/") || path.startsWith("/api/organizations/")) {
+            if (path.startsWith("/api/activities") || path.startsWith("/api/organizations")) {
                 chain.doFilter(request, response);
                 return;
             }
@@ -101,8 +99,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private boolean isPublicPath(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();
-        return path.equals("/api/users/login") || path.equals("/api/users/register")
-            || path.equals("/admin/login") || path.startsWith("/api/users/wechat")
-            || ("GET".equals(method) && (path.startsWith("/api/activities") || path.startsWith("/api/organizations")));
+        // 登录和注册端点
+        if (path.equals("/api/users/login") || path.equals("/api/users/register")
+            || path.equals("/admin/login") || path.startsWith("/api/users/wechat")) {
+            return true;
+        }
+        // GET 请求的公开资源
+        if ("GET".equals(method)) {
+            if (path.startsWith("/api/activities") || path.startsWith("/api/organizations")
+                || path.startsWith("/activities") || path.startsWith("/organizations")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

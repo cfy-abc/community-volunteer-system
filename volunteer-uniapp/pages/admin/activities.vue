@@ -45,7 +45,7 @@ const loadActivities = async () => {
   try {
     const params = { page: 1, size: 100 }
     if (filterStatus.value !== null) params.status = filterStatus.value
-    const res = await request.get('/activities', params)
+    const res = await request.get('/api/activities', params)
     if (res.code === 200) activities.value = res.data.list || []
   } catch (err) { uni.showToast({ title: '加载失败', icon: 'none' }) }
 }

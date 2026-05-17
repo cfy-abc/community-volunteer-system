@@ -21,31 +21,35 @@ export const userApi = {
 
 // 活动相关接口
 export const activityApi = {
-  getActivityList: (params) => request.get('/activities', params),
-  getActivityDetail: (id) => request.get(`/activities/${id}`),
-  publishActivity: (data) => request.post('/activities', data),
-  registerForActivity: (id) => request.post(`/activities/${id}/register`),
-  getSignStatus: (id) => request.get(`/activities/${id}/sign-status`),
-  checkIn: (id, data) => request.post(`/activities/${id}/checkin`, data),
-  checkOut: (id, data) => request.post(`/activities/${id}/checkout`, data),
-  getComments: (id) => request.get(`/activities/${id}/comments`),
-  addComment: (id, data) => request.post(`/activities/${id}/comments`, data),
-  getReplies: (commentId) => request.get(`/activities/comments/${commentId}/replies`),
-  replyComment: (commentId, data) => request.post(`/activities/comments/${commentId}/reply`, data),
-  deleteComment: (commentId) => request.delete(`/activities/comments/${commentId}`),
-  applyForActivity: (id, data) => request.post(`/activities/${id}/apply`, data),
-  getApplicants: (id) => request.get(`/activities/${id}/applicants`),
-  exportApplicants: (id) => request.get(`/activities/${id}/applicants/export`)
+  getActivityList: (params) => request.get('/api/activities', params),
+  getActivityDetail: (id) => request.get(`/api/activities/${id}`),
+  publishActivity: (data) => request.post('/api/activities', data),
+  registerForActivity: (id) => request.post(`/api/activities/${id}/register`),
+  getSignStatus: (id) => request.get(`/api/activities/${id}/sign-status`),
+  checkIn: (id, data) => request.post(`/api/activities/${id}/checkin`, data),
+  checkOut: (id, data) => request.post(`/api/activities/${id}/checkout`, data),
+  getComments: (id) => request.get(`/api/activities/${id}/comments`),
+  addComment: (id, data) => request.post(`/api/activities/${id}/comments`, data),
+  getReplies: (commentId) => request.get(`/api/activities/comments/${commentId}/replies`),
+  replyComment: (commentId, data) => request.post(`/api/activities/comments/${commentId}/reply`, data),
+  deleteComment: (commentId) => request.delete(`/api/activities/comments/${commentId}`),
+  applyForActivity: (id, data) => request.post(`/api/activities/${id}/apply`, data),
+  getApplicants: (id) => request.get(`/api/activities/${id}/applicants`),
+  exportApplicants: (id) => request.get(`/api/activities/${id}/applicants/export`),
+  organizerCheckIn: (id, data) => request.post(`/api/activities/${id}/organizer-checkin`, data),
+  getSignApprovals: (id) => request.get(`/api/activities/${id}/sign-approvals`),
+  approveSignRecord: (id) => request.put(`/api/activities/sign-approvals/${id}/approve`),
+  rejectSignRecord: (id) => request.put(`/api/activities/sign-approvals/${id}/reject`)
 }
 
 // 组织相关接口
 export const organizationApi = {
-  createOrganization: (data) => request.post('/organizations', data),
-  getCurrentOrganization: () => request.get('/organizations/current'),
-  getAllOrganizations: () => request.get('/organizations'),
-  joinOrganization: (orgId) => request.post(`/organizations/${orgId}/join`),
-  leaveOrganization: (orgId) => request.delete(`/organizations/${orgId}/leave`),
-  getMembers: (orgId) => request.get(`/organizations/${orgId}/members`)
+  createOrganization: (data) => request.post('/api/organizations', data),
+  getCurrentOrganization: () => request.get('/api/organizations/current'),
+  getAllOrganizations: () => request.get('/api/organizations'),
+  joinOrganization: (orgId) => request.post(`/api/organizations/${orgId}/join`),
+  leaveOrganization: (orgId) => request.delete(`/api/organizations/${orgId}/leave`),
+  getMembers: (orgId) => request.get(`/api/organizations/${orgId}/members`)
 }
 
 // 管理员相关接口

@@ -228,30 +228,104 @@ public class UserServiceImpl implements UserService {
         if (user == null) throw new Exception("用户不存在");
 
         stats.put("volunteerHours", user.getVolunteerHours());
-        stats.put("totalEarnedHours", user.getTotalEarnedHours());
-        stats.put("totalSpentHours", user.getTotalSpentHours());
-        // 注册至今所有服务时长
-        stats.put("allTimeHours", user.getTotalEarnedHours() != null ? user.getTotalEarnedHours() : 0);
+        stats.put("totalEarnedHours", user.getTotalEarnedHours() != null ? user.getTotalEarnedHours() : 0);
+        stats.put("totalSpentHours", user.getTotalSpentHours() != null ? user.getTotalSpentHours() : 0);
 
-        // Monthly stats (last 6 months from DB; fallback to empty)
-        java.util.List<Map<String, Object>> monthlyStats = userMapper.getMonthlyStats(userId);
-        if (monthlyStats == null || monthlyStats.isEmpty()) {
-            monthlyStats = new java.util.ArrayList<>();
-            String[] fallbackMonths = {"1月","2月","3月","4月","5月","6月"};
-            for (String m : fallbackMonths) {
-                Map<String, Object> entry = new java.util.HashMap<>();
-                entry.put("month", m); entry.put("hours", 0);
-                monthlyStats.add(entry);
+        // Load raw data: one query, compute everything in Java for guaranteed consistency
+        java.util.List<Map<String, Object>> rows = userMapper.getUserStatsRaw(userId);
+
+        // Compute total hours from raw data (sr hours preferred, fallback to vr hours)
+        double computedTotal = 0;
+        java.util.Map<String, Double> monthlyMap = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Double> typeMap = new java.util.LinkedHashMap<>();
+        java.util.Map<Integer, Double> yearlyMap = new java.util.LinkedHashMap<>();
+
+        java.text.SimpleDateFormat monthFmt = new java.text.SimpleDateFormat("yyyy-MM");
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+
+        for (Map<String, Object> row : rows) {
+            Number srHours = (Number) row.get("srHours");
+            Number vrHours = (Number) row.get("vrHours");
+            double hours = (srHours != null && srHours.doubleValue() > 0)
+                    ? srHours.doubleValue()
+                    : (vrHours != null ? vrHours.doubleValue() : 0);
+            computedTotal += hours;
+
+            // Determine date for monthly grouping (checkout time preferred, fallback to register time)
+            Object checkoutObj = row.get("checkoutTime");
+            Object registerObj = row.get("registerTime");
+            java.util.Date date = null;
+            if (checkoutObj instanceof java.util.Date) date = (java.util.Date) checkoutObj;
+            else if (checkoutObj instanceof java.sql.Timestamp) date = (java.util.Date) checkoutObj;
+            if (date == null && registerObj instanceof java.util.Date) date = (java.util.Date) registerObj;
+            if (date == null && registerObj instanceof java.sql.Timestamp) date = (java.util.Date) registerObj;
+
+            if (date != null) {
+                String monthKey = monthFmt.format(date);
+                monthlyMap.merge(monthKey, hours, Double::sum);
+
+                cal.setTime(date);
+                int year = cal.get(java.util.Calendar.YEAR);
+                yearlyMap.merge(year, hours, Double::sum);
             }
+
+            // Activity type
+            String activityType = (String) row.get("activityType");
+            if (activityType != null && !activityType.isEmpty()) {
+                typeMap.merge(activityType, hours, Double::sum);
+            }
+        }
+
+        // Use computed total as authoritative allTimeHours
+        double allTimeHours;
+        if (computedTotal > 0) {
+            allTimeHours = Math.round(computedTotal * 10) / 10.0;
+        } else {
+            allTimeHours = ((Number) stats.get("totalEarnedHours")).doubleValue();
+        }
+        stats.put("allTimeHours", allTimeHours);
+
+        // Self-heal: if DB totalEarnedHours differs from computed, update the DB
+        int dbEarned = user.getTotalEarnedHours() != null ? user.getTotalEarnedHours() : 0;
+        int computedEarned = (int) Math.round(computedTotal);
+        if (computedTotal > 0 && Math.abs(dbEarned - computedEarned) > 0) {
+            user.setTotalEarnedHours(computedEarned);
+            userMapper.updateHours(user);
+            stats.put("totalEarnedHours", computedEarned);
+        }
+
+        // Build monthly stats list (sorted)
+        java.util.List<Map<String, Object>> monthlyStats = new java.util.ArrayList<>();
+        java.util.List<String> sortedMonths = new java.util.ArrayList<>(monthlyMap.keySet());
+        java.util.Collections.sort(sortedMonths);
+        for (String m : sortedMonths) {
+            Map<String, Object> entry = new java.util.HashMap<>();
+            entry.put("month", m);
+            entry.put("hours", Math.round(monthlyMap.get(m) * 10) / 10.0);
+            monthlyStats.add(entry);
         }
         stats.put("monthlyStats", monthlyStats);
 
-        // Activity type distribution
-        java.util.List<Map<String, Object>> typeDistribution = userMapper.getActivityTypeDistribution(userId);
+        // Build type distribution list
+        java.util.List<Map<String, Object>> typeDistribution = new java.util.ArrayList<>();
+        for (Map.Entry<String, Double> e : typeMap.entrySet()) {
+            Map<String, Object> entry = new java.util.HashMap<>();
+            entry.put("name", e.getKey());
+            entry.put("value", Math.round(e.getValue() * 10) / 10.0);
+            typeDistribution.add(entry);
+        }
         stats.put("typeDistribution", typeDistribution);
 
-        // Yearly stats (last 3 years)
-        java.util.List<Map<String, Object>> yearlyStats = userMapper.getYearlyStats(userId);
+        // Build yearly stats list
+        java.util.List<Map<String, Object>> yearlyStats = new java.util.ArrayList<>();
+        java.util.List<Integer> sortedYears = new java.util.ArrayList<>(yearlyMap.keySet());
+        java.util.Collections.sort(sortedYears);
+        for (Integer y : sortedYears) {
+            Map<String, Object> entry = new java.util.HashMap<>();
+            entry.put("year", y);
+            entry.put("hours", Math.round(yearlyMap.get(y) * 10) / 10.0);
+            yearlyStats.add(entry);
+        }
         stats.put("yearlyStats", yearlyStats);
 
         return stats;

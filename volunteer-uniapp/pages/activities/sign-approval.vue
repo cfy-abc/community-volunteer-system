@@ -32,27 +32,33 @@ const activityId = ref(null)
 const records = ref([])
 
 const loadRecords = async () => {
+  // 验证 activityId
+  if (!activityId.value || isNaN(activityId.value)) {
+    uni.showToast({
+      title: '活动ID无效',
+      icon: 'none'
+    });
+    return;
+  }
+  
   try {
-    // Use the admin sign-approvals endpoint filtered by activity
-    const res = await request.get('/admin/sign-approvals', { page: 1, size: 100 })
+    const res = await request.get(`/api/activities/${activityId.value}/sign-approvals`)
     if (res.code === 200 && res.data) {
-      // Filter to only this activity
-      records.value = (res.data.list || []).filter(
-        r => r.activityId == activityId.value
-      )
+      records.value = res.data || []
     }
   } catch (e) {
     console.error('加载审批列表失败', e)
+    uni.showToast({
+      title: e.message || '加载失败',
+      icon: 'none'
+    })
   }
 }
 
+
 const approve = async (record) => {
   try {
-    await request.post(`/admin/sign-records/${record.id}/approve`, {
-      userId: record.userId,
-      activityId: record.activityId,
-      hours: record.hoursEarned
-    })
+    await request.put(`/api/activities/sign-approvals/${record.id || record.recordId}/approve`)
     uni.showToast({ title: '已通过', icon: 'success' })
     loadRecords()
   } catch (e) {
@@ -62,7 +68,7 @@ const approve = async (record) => {
 
 const reject = async (id) => {
   try {
-    await request.put(`/admin/sign-approvals/${id}/reject`)
+    await request.put(`/api/activities/sign-approvals/${id}/reject`)
     uni.showToast({ title: '已拒绝', icon: 'success' })
     loadRecords()
   } catch (e) {
@@ -77,9 +83,39 @@ const fmt = (d) => {
 const goBack = () => uni.navigateBack()
 
 onLoad((options) => {
-  activityId.value = parseInt(options.activityId)
-  loadRecords()
+  // 1. 获取 activityId 并验证
+  const id = options.activityId;
+  
+  if (!id || id === 'undefined' || id === 'null') {
+    uni.showToast({
+      title: '缺少活动ID参数',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 1500);
+    return;
+  }
+  
+  // 2. 转换为整数并验证
+  const parsedId = parseInt(id);
+  
+  if (isNaN(parsedId) || parsedId <= 0) {
+    uni.showToast({
+      title: '无效的活动ID',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 1500);
+    return;
+  }
+  
+  // 3. 赋值并加载数据
+  activityId.value = parsedId;
+  loadRecords();
 })
+
 </script>
 
 <style lang="scss" scoped>

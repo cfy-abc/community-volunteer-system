@@ -7,7 +7,7 @@
       </view>
       <view class="header-right">
         <view class="notification-icon" @tap="showNotifications">
-          <text class="iconfont icon-notification"></text>
+          <text class="bell-icon">&#128276;</text>
           <view v-if="unreadCount > 0" class="badge">{{ unreadCount }}</view>
         </view>
         <view class="user-avatar" @tap="toProfile">
@@ -16,30 +16,30 @@
       </view>
     </view>
 
-    <!-- 快捷入口（将第一个改为“发布活动”） -->
+    <!-- 快捷入口 -->
     <view class="quick-actions">
       <view class="action-grid">
         <view class="action-item" @tap="goToPublish">
           <view class="action-icon bg-blue">
-            <text class="iconfont icon-publish"></text>
+            <text class="action-icon-text">&#9997;</text>
           </view>
           <text class="action-text">发布活动</text>
         </view>
         <view class="action-item" @tap="goToMyApplications">
           <view class="action-icon bg-green">
-            <text class="iconfont icon-application"></text>
+            <text class="action-icon-text">&#128203;</text>
           </view>
           <text class="action-text">我的报名</text>
         </view>
         <view class="action-item" @tap="goToCertificates">
           <view class="action-icon bg-orange">
-            <text class="iconfont icon-certificate"></text>
+            <text class="action-icon-text">&#127942;</text>
           </view>
           <text class="action-text">我的证书</text>
         </view>
         <view class="action-item" @tap="goToMyActivities">
           <view class="action-icon bg-purple">
-            <text class="iconfont icon-profile"></text>
+            <text class="action-icon-text">&#128188;</text>
           </view>
           <text class="action-text">我的活动</text>
         </view>
@@ -117,7 +117,10 @@ const userDisplayName = computed(() => {
   return uni.getStorageSync('token') ? '志愿者' : '游客'
 })
 const userAvatar = computed(() => {
-  return userInfo.value.avatar || '/static/images/default-avatar.png'
+  if (userInfo.value.avatar) return userInfo.value.avatar
+  const cached = uni.getStorageSync('userInfo')
+  if (cached && cached.avatar) return cached.avatar
+  return '/static/images/default-avatar.png'
 })
 const currentMonthHours = computed(() => {
   if (!monthlyStats.value || monthlyStats.value.length === 0) return 0
@@ -130,7 +133,7 @@ const currentMonthHours = computed(() => {
 const loadData = async () => {
   // 加载活动列表（无需登录）
   try {
-    const res = await request.get('/activities', { status: 1, page: 1, size: 3 })
+    const res = await request.get('/api/activities', { status: 1, page: 1, size: 3 })
     if (res.code === 200 && res.data) {
       recommendActivities.value = (res.data.list || []).map(a => ({
         ...a,
@@ -253,7 +256,7 @@ onShow(() => {
     
     .notification-icon {
       position: relative;
-      font-size: 40rpx;
+      .bell-icon { font-size: 44rpx; line-height: 1; }
       .badge {
         position: absolute;
         top: -10rpx;
@@ -309,6 +312,7 @@ onShow(() => {
       margin-bottom: 10rpx;
       font-size: 36rpx;
       color: #fff;
+      .action-icon-text { font-size: 40rpx; line-height: 1; }
     }
     .action-text {
       font-size: 24rpx;
